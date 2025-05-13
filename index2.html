@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Convection Simulation</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #222; 
+      color: #fff; 
+      font-family: sans-serif;
+    }
+    
+    .container {
+      position: relative;
+      width: 90%;
+      max-width: 600px;
+      margin: 20px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: visible;
+    }
+    
+    .canvas-wrapper {
+      width: 100%;
+      padding-bottom: 100%; /* 1:1 Aspect Ratio */
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    canvas { 
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      touch-action: none;
+      /* image-rendering properties for how the browser scales the canvas element itself, if it were scaled by CSS. */
+      /* For drawImage, ctx.imageSmoothingEnabled is key. */
+      image-rendering: -webkit-optimize-contrast; /* Older WebKit */
+      image-rendering: crisp-edges; /* Standard */
+      image-rendering: pixelated; /* Another option for upscaling pixel art */
+    }
+    
+    #controls {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.30);
+      padding: 12px;
+      border-radius: 8px;
+      box-sizing: border-box;
+      margin-top: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    #controls-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    #controls label { 
+      display: block;
+      flex: 1 1 calc(50% - 10px);
+      min-width: 120px;
+      margin: 0;
+      font-size: 14px;
+    }
+    
+    #controls input { 
+      width: 100%;
+    }
+    
+    #fps {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      color: #fff;
+      display: none; /* Initially hidden */
+      z-index: 1; /* Ensure it's above canvas content */
+    }
+    
+    /* Hamburger Menu */
+    .hamburger {
+      display: none;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      background: rgba(0,0,0,0.7);
+      border-radius: 5px;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .hamburger div {
+      width: 25px;
+      height: 3px;
+      background-color: white;
+      margin: 5px 0;
+      border-radius: 2px;
+    }
+    
+    @media (max-width: 600px) {
+      .container {
+        width: 95%;
+      }
+      
+      .hamburger {
+        display: block;
+      }
+      
+      #controls {
+        position: absolute;
+        top: 10px;
+        left: -100%; /* Start off-screen */
+        width: 80%;
+        max-width: 250px;
+        transition: left 0.3s ease;
+        z-index: 3; /* Ensure controls are on top when visible */
+      }
+      
+      #controls.visible {
+        left: 10px; /* Slide in, leaving space from edge */
+      }
+      
+      #controls-content {
+        flex-direction: column;
+      }
+      
+      #controls label {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hamburger" id="menu-toggle">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    <div class="canvas-wrapper">
+      <canvas id="canvas"></canvas>
+      <div id="fps">FPS: 0</div>
+    </div>
+    <div id="controls">
+      <div id="controls-content">
+        <label>Simulation Speed: <span id="timeScaleVal">2.5</span>x
+          <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="2.5">
+        </label>
+        <label>Heating Radius: <span id="heatSizeVal">5</span>
+          <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
+        </label>
+        <label>Heat Intensity: <span id="heatAmpVal">0.50</span>
+          <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.50">
+        </label>
+        <label>Surface Cooling: <span id="coolRateVal">0.50</span>
+          <input type="range" id="coolRate" min="0" max="1" step="0.01" value="0.50">
+        </label>
+      </div>
+    </div>
+  </div>
+  <script>
+    // GRID & PHYSICS PARAMETERS
+    const N    = 64,            // interior cells per side
+          size = N + 2,         // include ghost cells
+          iter = 4;             // Gauss–Seidel iterations
+    const diff   = 0.0001,      // thermal diffusion
+          visc   = 0.0001,      // kinematic viscosity
+          buoyancyCoeff = 1.0,  // strength of buoyant force
+          ambientTemp   = 0.5;  // reference temperature
+    
+    // TIME MANAGEMENT
+    const physicsDt = 0.02;     // physics timestep
+    const targetPhysicsRate = 60; // target physics updates per second
+    let accumulatedTime = 0;
+    let timeScale = 2.5; // simulation speed multiplier
+    let lastTimestamp = 0;
+    
+    // FPS TRACKING
+    let frameCount = 0;
+    let lastFpsUpdate = 0;
+    let currentFps = 0;
+    
+    // FLUID STATE ARRAYS
+    let u        = new Float32Array(size*size),
+        v        = new Float32Array(size*size),
+        u_prev   = new Float32Array(size*size),
+        v_prev   = new Float32Array(size*size),
+        dens     = new Float32Array(size*size),
+        dens_prev= new Float32Array(size*size);
+
+    // scratch arrays for solver
+    const u0    = new Float32Array(size*size),
+          v0    = new Float32Array(size*size),
+          dens0 = new Float32Array(size*size);
+
+    for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
+
+    let avg_density = ambientTemp;
+    let prev_avg_density = ambientTemp;
+
+    // UI STATE
+    let heatRadius = 5,
+        heatAmp    = 0.5,
+        coolRate   = 0.5, 
+        heating    = false,
+        mX = 0, mY = 0;
+
+    // DOM REFS
+    const canvas      = document.getElementById('canvas'),
+          ctx         = canvas.getContext('2d'),
+          timeSlider  = document.getElementById('timeScale'),
+          timeVal     = document.getElementById('timeScaleVal'),
+          radiusSlider= document.getElementById('heatSize'),
+          radiusVal   = document.getElementById('heatSizeVal'),
+          ampSlider   = document.getElementById('heatAmp'),
+          ampVal      = document.getElementById('heatAmpVal'),
+          coolSlider  = document.getElementById('coolRate'),
+          coolVal     = document.getElementById('coolRateVal'),
+          fpsDisplay  = document.getElementById('fps');
+
+    // Offscreen canvas for rendering optimization
+    let offscreenCanvas = null;
+    let offscreenCtx = null;
+    let offscreenImageData = null; // Will be N x N
+
+    function resizeCanvas() {
+      const wrapper = canvas.parentElement;
+      const rect = wrapper.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+
+    function adjustSimulationSize() {
+      const container = document.querySelector('.container');
+      const canvasWrapper = document.querySelector('.canvas-wrapper');
+      const controlsEl = document.getElementById('controls');
+      const controlsHeight = controlsEl ? controlsEl.offsetHeight : 0;
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      
+      const availableHeight = viewportHeight - 40; 
+      
+      if (window.innerWidth <= 600) {
+        const maxDimension = Math.min(viewportWidth * 0.95, availableHeight * 0.8);
+        canvasWrapper.style.width = maxDimension + 'px';
+        canvasWrapper.style.paddingBottom = maxDimension + 'px';
+        container.style.margin = '20px auto';
+      } else {
+        const maxCanvasHeight = availableHeight - controlsHeight - 20;
+        const maxWidth = Math.min(viewportWidth * 0.9, 600);
+        const maxCanvasWidth = maxWidth;
+        const maxDimension = Math.min(maxCanvasWidth, maxCanvasHeight);
+        
+        canvasWrapper.style.width = maxDimension + 'px';
+        canvasWrapper.style.paddingBottom = maxDimension + 'px';
+        container.style.margin = '20px auto';
+      }
+      resizeCanvas();
+    }
+    
+    window.addEventListener('load', () => {
+      adjustSimulationSize();
+      setTimeout(adjustSimulationSize, 100); 
+    });
+    window.addEventListener('resize', adjustSimulationSize);
+
+    timeSlider.oninput   = () => { timeScale = +timeSlider.value; timeVal.textContent = timeScale.toFixed(1); };
+    radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; };
+    ampSlider.oninput    = () => { heatAmp = +ampSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
+    coolSlider.oninput   = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(2); };
+
+    function updatePosition(e) {
+      const r = canvas.getBoundingClientRect();
+      let clientX, clientY;
+      
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else if (e.clientX !== undefined) { 
+        clientX = e.clientX;
+        clientY = e.clientY;
+      } else {
+        return; 
+      }
+      
+      mX = clientX - r.left;
+      mY = clientY - r.top;
+      
+      mX = mX * (canvas.width / r.width);
+      mY = mY * (canvas.height / r.height);
+    }
+
+    canvas.addEventListener('mousedown', (e) => { heating = true; updatePosition(e); });
+    canvas.addEventListener('mouseup', () => heating = false);
+    canvas.addEventListener('mouseleave', () => heating = false);
+    canvas.addEventListener('mousemove', (e) => { if(heating) updatePosition(e); });
+
+
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault(); 
+        heating = true;
+        updatePosition(e);
+    });
+    canvas.addEventListener('touchend', () => heating = false);
+    canvas.addEventListener('touchcancel', () => heating = false);
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault(); 
+      if (heating) updatePosition(e);
+    });
+    
+    const menuToggle = document.getElementById('menu-toggle');
+    const controlsPanel = document.getElementById('controls');
+    
+    menuToggle.addEventListener('click', (e) => {
+      e.stopPropagation(); 
+      controlsPanel.classList.toggle('visible');
+    });
+    
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 600) {
+        if (controlsPanel.classList.contains('visible') && !controlsPanel.contains(e.target) && e.target !== menuToggle) {
+          controlsPanel.classList.remove('visible');
+        }
+      }
+    });
+
+    function IX(i,j){ return i + j*size; }
+
+    function setBnd(b, x_arr) {
+      for (let i = 1; i <= N; i++) {
+        x_arr[IX(0,   i)] = b===1 ? -x_arr[IX(1, i)] : x_arr[IX(1, i)];
+        x_arr[IX(N+1, i)] = b===1 ? -x_arr[IX(N, i)] : x_arr[IX(N, i)];
+        x_arr[IX(i,   0)] = b===2 ? -x_arr[IX(i, 1)] : x_arr[IX(i, 1)];
+        x_arr[IX(i, N+1)] = b===2 ? -x_arr[IX(i, N)] : x_arr[IX(i, N)];
+      }
+      x_arr[IX(0,   0)]   = 0.5*(x_arr[IX(1,0)]   + x_arr[IX(0,1)]);
+      x_arr[IX(0,   N+1)] = 0.5*(x_arr[IX(1,N+1)] + x_arr[IX(0,N)]);
+      x_arr[IX(N+1, 0)]   = 0.5*(x_arr[IX(N,0)]   + x_arr[IX(N+1,1)]);
+      x_arr[IX(N+1, N+1)] = 0.5*(x_arr[IX(N, N+1)]+ x_arr[IX(N+1,N)]);
+    }
+
+    function linSolve(b, x_arr, x0_arr, a, c) {
+      const c_inv = 1.0 / c; 
+      for (let k = 0; k < iter; k++) {
+        for (let j = 1; j <= N; j++) {
+          for (let i = 1; i <= N; i++) {
+            x_arr[IX(i,j)] = (x0_arr[IX(i,j)] + a*(
+              x_arr[IX(i-1,j)] + x_arr[IX(i+1,j)] +
+              x_arr[IX(i, j-1)] + x_arr[IX(i, j+1)]
+            )) * c_inv; 
+          }
+        }
+        setBnd(b, x_arr);
+      }
+    }
+
+    function diffuse(b, x_arr, x0_arr, diff_coeff) { 
+      const a = physicsDt * diff_coeff * N * N;
+      linSolve(b, x_arr, x0_arr, a, 1 + 4*a);
+    }
+
+    function advect(b, d_arr, d0_arr, u_vel, v_vel) { 
+      const dt0 = physicsDt * N;
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          let x_coord = i - dt0 * u_vel[IX(i,j)]; 
+          let y_coord = j - dt0 * v_vel[IX(i,j)]; 
+          x_coord = Math.max(0.5, Math.min(N + 0.5, x_coord));
+          y_coord = Math.max(0.5, Math.min(N + 0.5, y_coord));
+          const i0 = Math.floor(x_coord), i1 = i0 + 1;
+          const j0 = Math.floor(y_coord), j1 = j0 + 1;
+          const s1 = x_coord - i0, s0 = 1 - s1;
+          const t1 = y_coord - j0, t0 = 1 - t1;
+          d_arr[IX(i,j)] =
+            s0*(t0*d0_arr[IX(i0,j0)] + t1*d0_arr[IX(i0,j1)]) +
+            s1*(t0*d0_arr[IX(i1,j0)] + t1*d0_arr[IX(i1,j1)]);
+        }
+      }
+      setBnd(b, d_arr);
+    }
+
+    function project(u_vel, v_vel, p_arr, div_arr) { 
+      const h_inv = 1.0 / N; 
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          div_arr[IX(i,j)] = -0.5 * h_inv * (
+            u_vel[IX(i+1,j)] - u_vel[IX(i-1,j)] +
+            v_vel[IX(i, j+1)] - v_vel[IX(i, j-1)]
+          );
+          p_arr[IX(i,j)] = 0;
+        }
+      }
+      setBnd(0, div_arr);
+      setBnd(0, p_arr);
+      linSolve(0, p_arr, div_arr, 1, 4);
+
+      const N_half = 0.5 * N; 
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          u_vel[IX(i,j)] -= N_half * (p_arr[IX(i+1,j)] - p_arr[IX(i-1,j)]);
+          v_vel[IX(i,j)] -= N_half * (p_arr[IX(i, j+1)] - p_arr[IX(i, j-1)]);
+        }
+      }
+      setBnd(1, u_vel);
+      setBnd(2, v_vel);
+    }
+
+    function addSource(x_arr, s_arr) { 
+      for (let i = 0; i < x_arr.length; i++) {
+        x_arr[i] += physicsDt * s_arr[i];
+      }
+    }
+    
+    function renderDensity() {
+        if (!offscreenCanvas) {
+            offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = N;
+            offscreenCanvas.height = N;
+            offscreenCtx = offscreenCanvas.getContext('2d');
+            offscreenImageData = offscreenCtx.createImageData(N, N);
+        }
+
+        const data = offscreenImageData.data;
+
+        for (let y_px = 0; y_px < N; y_px++) { 
+            for (let x_px = 0; x_px < N; x_px++) { 
+                const sim_i = x_px + 1;
+                const sim_j = N - y_px; 
+
+                const T_val = dens[IX(sim_i, sim_j)]; 
+                const t = Math.max(0, Math.min(1, T_val)); 
+
+                const hue = (1 - t) * 240; 
+                const s_hsl = 1.0;
+                const l_hsl = 0.5;
+                
+                const c_hsl = (1 - Math.abs(2 * l_hsl - 1)) * s_hsl;
+                const x_hsl_component = c_hsl * (1 - Math.abs((hue / 60) % 2 - 1));
+                const m_hsl = l_hsl - c_hsl / 2;
+                
+                let r_norm, g_norm, b_norm;
+                const h_prime = hue / 60;
+
+                if (h_prime >= 0 && h_prime < 1) { r_norm = c_hsl; g_norm = x_hsl_component; b_norm = 0; }
+                else if (h_prime >= 1 && h_prime < 2) { r_norm = x_hsl_component; g_norm = c_hsl; b_norm = 0; }
+                else if (h_prime >= 2 && h_prime < 3) { r_norm = 0; g_norm = c_hsl; b_norm = x_hsl_component; }
+                else if (h_prime >= 3 && h_prime < 4) { r_norm = 0; g_norm = x_hsl_component; b_norm = c_hsl; }
+                else if (h_prime >= 4 && h_prime < 5) { r_norm = x_hsl_component; g_norm = 0; b_norm = c_hsl; }
+                else { r_norm = c_hsl; g_norm = 0; b_norm = x_hsl_component; } 
+                
+                const R = Math.round((r_norm + m_hsl) * 255);
+                const G = Math.round((g_norm + m_hsl) * 255);
+                const B = Math.round((b_norm + m_hsl) * 255);
+                
+                const index = (y_px * N + x_px) * 4;
+                data[index]     = R;
+                data[index + 1] = G;
+                data[index + 2] = B;
+                data[index + 3] = 255; 
+            }
+        }
+        offscreenCtx.putImageData(offscreenImageData, 0, 0);
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false; 
+        // ctx.webkitImageSmoothingEnabled = false; // Covered by imageSmoothingEnabled
+        // ctx.msImageSmoothingEnabled = false; // Covered by imageSmoothingEnabled
+        
+        ctx.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
+    }
+
+
+    function simulate() {
+      u_prev.fill(0);
+      v_prev.fill(0);
+      dens_prev.fill(0);
+
+      if (heating) {
+        const cellW = canvas.width / N; 
+        const cellH = canvas.height / N;
+        const ci = Math.floor(mX / cellW) + 1;
+        const cj = N - Math.floor(mY / cellH); // mY=0 (top) -> cj=N (sim top)
+        
+        for (let di = -heatRadius; di <= heatRadius; di++) {
+          for (let dj = -heatRadius; dj <= heatRadius; dj++) {
+            const ii = ci + di, jj = cj + dj;
+            if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
+              const d2 = di*di + dj*dj;
+              if (d2 <= heatRadius*heatRadius) { 
+                const w = Math.exp(-d2/(2*heatRadius*heatRadius)); 
+                dens_prev[IX(ii,jj)] += heatAmp * w;
+              }
+            }
+          }
+        }
+      }
+
+      prev_avg_density = avg_density;
+      avg_density = 0;
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          const id = IX(i,j);
+          avg_density += dens[id];
+          const anomaly = dens[id] - prev_avg_density;
+          v_prev[id] += buoyancyCoeff * anomaly;
+        }
+      }
+      avg_density /= (N*N); 
+      
+      addSource(u, u_prev);
+      addSource(v, v_prev);
+
+      u0.set(u); diffuse(1, u, u0, visc);
+      v0.set(v); diffuse(2, v, v0, visc);
+      project(u, v, u0, v0); 
+
+      u0.set(u); v0.set(v); 
+      advect(1, u, u0, u0, v0); 
+      advect(2, v, v0, u0, v0); 
+      project(u, v, u0, v0);
+
+      addSource(dens, dens_prev);
+      dens0.set(dens); diffuse(0, dens, dens0, diff);
+      dens0.set(dens); advect(0, dens, dens0, u, v);
+
+      for (let k = 0; k < 3; k++) {
+        const j_cool = N - k;                    
+        const gradient = 1/(k+1);           
+        for (let i = 1; i <= N; i++) {
+            const rate = (coolRate/100) * gradient;      
+            const noise = 1 + (Math.random() - 0.5) * 0.2;
+            const idx = IX(i, j_cool);
+            dens[idx] *= (1 - rate * noise);
+            dens[idx] = Math.max(0, dens[idx]); 
+        }
+      }
+      setBnd(0, dens);
+    }
+
+    function updateFPS(timestamp) {
+      frameCount++;
+      if (timestamp - lastFpsUpdate >= 1000) {
+        currentFps = Math.round(frameCount * 1000 / (timestamp - lastFpsUpdate));
+        fpsDisplay.textContent = `FPS: ${currentFps}`;
+        frameCount = 0;
+        lastFpsUpdate = timestamp;
+      }
+    }
+
+    function step(timestamp) {
+      if (!lastTimestamp) {
+        lastTimestamp = timestamp;
+        lastFpsUpdate = timestamp;
+        requestAnimationFrame(step);
+        return;
+      }
+      
+      const deltaTime = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+      const cappedDeltaTime = Math.min(deltaTime, 0.1); 
+      accumulatedTime += cappedDeltaTime * timeScale;
+      
+      const physicsInterval = 1.0 / targetPhysicsRate;
+      while (accumulatedTime >= physicsInterval) {
+        simulate();
+        accumulatedTime -= physicsInterval;
+      }
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height); 
+      renderDensity();
+      updateFPS(timestamp);
+      requestAnimationFrame(step);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'f') {
+        fpsDisplay.style.display = fpsDisplay.style.display === 'block' ? 'none' : 'block';
+      }
+    });
+    
+    function preventDefaultTouch(e) {
+      if (e.target === canvas) {
+        e.preventDefault();
+      }
+    }
+    document.addEventListener('touchmove', preventDefaultTouch, { passive: false });
+
+    timeVal.textContent = (+timeSlider.value).toFixed(1);
+    radiusVal.textContent = radiusSlider.value;
+    ampVal.textContent = (+ampSlider.value).toFixed(2);
+    coolVal.textContent = (+coolSlider.value).toFixed(2);
+
+    requestAnimationFrame(step);
+  </script>
+</body>
+</html>

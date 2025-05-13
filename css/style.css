@@ -1,0 +1,459 @@
+/* --- Global Resets & Base Styles --- */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-primary: #222;
+    --bg-secondary: #2a2a2a;
+    --text-primary: #f0f0f0;
+    --text-secondary: #ccc;
+    --accent-color: #00bcd4; /* Teal */
+    --accent-hover: #0097a7; /* Darker teal for hover */
+    --border-color: #444;
+    --header-initial-height: 70px; /* For JS calculations */
+    --header-scrolled-height: 50px; /* For JS calculations & CSS */
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* --- Utility Classes --- */
+.container {
+    width: 90%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* --- Header --- */
+header {
+    background-color: var(--bg-secondary);
+    padding: 15px 0; /* Initial padding */
+    border-bottom: 2px solid var(--accent-color);
+    position: fixed; /* Changed to fixed for hide/show effect */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    width: 100%;
+    transition: padding 0.3s ease-in-out, transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow for fixed header */
+}
+
+header.header-scrolled { /* For desktop scrolled state */
+    padding: 5px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2); /* More prominent shadow when scrolled */
+}
+header.header-scrolled h1 a {
+    font-size: 1.5rem; /* Smaller title */
+}
+header.header-scrolled nav ul li a {
+    font-size: 0.9rem; /* Slightly smaller nav links */
+}
+
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* transition for height changes of children that affect header height implicitly */
+    /* transition: height 0.3s ease-in-out; */
+}
+
+header h1 a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-size: 1.8rem; /* Initial font size */
+    font-weight: bold;
+    transition: font-size 0.3s ease-in-out;
+}
+
+header nav ul {
+    list-style: none;
+    display: flex;
+}
+
+header nav ul li {
+    margin-left: 20px;
+}
+
+header nav ul li a {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 1rem; /* Initial font size */
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, color 0.3s ease, font-size 0.3s ease-in-out;
+}
+
+header nav ul li a:hover,
+header nav ul li a.active {
+    background-color: var(--accent-color);
+    color: var(--bg-primary);
+}
+
+.menu-toggle { /* Main site hamburger */
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 2rem;
+    cursor: pointer;
+    z-index: 1001; /* Ensure it's clickable if header has other elements */
+}
+
+/* --- Main Content --- */
+main {
+    flex-grow: 1;
+    padding: 40px 0;
+    width: 100%;
+    margin-top: var(--header-initial-height); /* Add margin to push content below fixed header */
+                                              /* This will be adjusted by JS if header shrinks */
+}
+
+.hero {
+    background-color: var(--bg-secondary);
+    padding: 60px 0;
+    text-align: center;
+    margin-bottom: 40px;
+    border-radius: 8px;
+}
+main > .hero {
+    width: 90%;
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
+.hero h2 {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    margin-bottom: 15px;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+}
+
+.simulations-list h3 {
+    font-size: 2rem;
+    margin-bottom: 30px;
+    text-align: center;
+    color: var(--accent-color);
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    padding: 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent-color);
+}
+
+.card h4 {
+    color: var(--accent-color);
+    margin-bottom: 10px;
+    font-size: 1.4rem;
+}
+
+.card p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+/* --- Simulation Page Specific Styles --- */
+.simulation-page .simulation-container {}
+
+.simulation-page h2 {
+    font-size: 2.2rem;
+    color: var(--accent-color);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.description-area {
+    background-color: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 30px;
+    width: 100%;
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.description-area h3 {
+    color: var(--accent-color);
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+
+/* --- Generic Simulation Element Styles --- */
+.simulation-layout-wrapper {
+    /* position: relative; REMOVED - no longer needed for sim-controls-toggle */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* SIM-CONTROLS-TOGGLE and SIM-PANEL-CLOSE-BTN styles REMOVED */
+
+.sim-canvas-container {
+    width: 100%;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.sim-aspect-ratio-box {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: calc(100% / (var(--aspect-ratio, 1)));
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: #000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.sim-aspect-ratio-box canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.sim-canvas-container > canvas:not(.sim-aspect-ratio-box canvas) {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    background-color: #000;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+canvas.sim-canvas,
+.sim-aspect-ratio-box canvas {
+    display: block;
+    touch-action: none;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+.sim-fps-display {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.6);
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    color: #fff;
+    z-index: 10;
+    display: none;
+}
+
+.sim-controls-panel { /* Now always visible, normal block element */
+    width: 100%;
+    background-color: var(--bg-secondary);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    /* Removed mobile-specific fixed positioning and transitions */
+}
+
+.sim-controls-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px 20px;
+}
+
+.sim-controls-content label {
+    display: block;
+    flex: 1 1 calc(50% - 10px); /* Attempt two columns if space, -10px is half of column-gap */
+    min-width: 200px; /* Controls when it breaks to single column, adjust as needed */
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+.sim-controls-content label span {
+    color: var(--accent-color);
+    font-weight: bold;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.sim-controls-content input[type="range"],
+.sim-controls-content input[type="number"],
+.sim-controls-content input[type="text"],
+.sim-controls-content select {
+    width: 100%;
+    margin-top: 5px;
+    padding: 8px;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.sim-controls-content input[type="range"] {
+    padding: 0;
+}
+
+.sim-controls-content button {
+    background-color: var(--accent-color);
+    color: var(--bg-primary);
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    min-width: 100px;
+    flex-grow: 1;
+    margin-top: 5px;
+}
+.sim-controls-content button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* --- Footer --- */
+footer {
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 768px) {
+    header {
+        /* Mobile header specific states, handled by JS classes */
+        /* Default state is visible */
+    }
+    header.header-hidden { /* For mobile scrolled state */
+        transform: translateY(-100%);
+    }
+
+    header .container {
+        flex-direction: column;
+        align-items: flex-start;
+        position: relative; /* For menu-toggle positioning */
+    }
+
+    header nav {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    header nav ul {
+        flex-direction: column;
+        width: 100%;
+        display: none; /* JS toggles this */
+        background-color: var(--bg-secondary); /* Ensure menu has background if header shrinks/hides */
+        position: absolute;
+        top: 100%; /* Position below the header part */
+        left: 0;
+        right: 0;
+        padding-bottom: 10px;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+    }
+    header nav ul.active {
+        display: flex;
+    }
+
+    header nav ul li {
+        margin: 0; /* Remove left margin */
+        width: 100%;
+    }
+    header nav ul li a {
+        display: block;
+        text-align: center;
+        padding: 12px 10px; /* Larger tap target */
+        border-bottom: 1px solid var(--border-color);
+    }
+     header nav ul li:last-child a {
+        border-bottom: none;
+    }
+
+
+    .menu-toggle { /* Site main menu toggle */
+        display: block;
+        position: absolute; /* Position relative to header .container */
+        top: 50%;
+        transform: translateY(-50%);
+        right: 15px; /* Aligned with container padding */
+    }
+
+    /* Adjust main content margin top dynamically based on header height (via JS) */
+    /* main { margin-top: var(--header-initial-height); } /* Already set globally */
+
+    .hero h2 { font-size: 2rem; }
+    .hero p { font-size: 1rem; }
+    .simulation-page h2 { font-size: 1.8rem; }
+
+    /* Simulation Controls Panel on mobile: always visible, single column */
+    .sim-controls-panel {
+        /* No longer fixed/slide-out. Inherits width from .simulation-layout-wrapper */
+        /* Padding and background already defined */
+    }
+
+    .sim-controls-content label {
+        flex-basis: 100%; /* Ensure single column */
+        min-width: 0; /* Override min-width from desktop */
+    }
+    .sim-controls-content button {
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 a { font-size: 1.6rem; }
+    header.header-scrolled h1 a { font-size: 1.4rem; } /* if desktop scrolled state applies */
+
+    .sim-controls-content label {
+        /* Already full width */
+    }
+}

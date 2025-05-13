@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Convection Simulation (Cooling Visible)</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #222; color: #fff; font-family: sans-serif; }
+    #controls { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; z-index: 1; }
+    #controls label { display: block; margin: 5px 0; }
+    #controls input { width: 150px; }
+    canvas { display: block; margin: 40px auto; background: #000; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>Speed: <span id="timeScaleVal">5</span> steps/frame
+      <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
+    </label>
+    <label>Heating Radius: <span id="heatSizeVal">5</span> cells
+      <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
+    </label>
+    <label>Heat Intensity: <span id="heatAmpVal">0.20</span>
+      <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.20">
+    </label>
+    <label>Surface Cooling: <span id="coolRateVal">0.001</span>
+      <input type="range" id="coolRate" min="0" max="0.01" step="0.001" value="0.001">
+    </label>
+  </div>
+
+  <canvas id="canvas" width="512" height="512"></canvas>
+  <script>
+    // GRID & PHYSICS PARAMETERS
+    const N    = 64,            // interior cells per side
+          size = N + 2,         // include ghost cells
+          iter = 4;             // Gauss–Seidel iterations
+    const diff   = 0.0001,      // thermal diffusion
+          visc   = 0.0001,      // kinematic viscosity
+          buoyancyCoeff = 1.0,  // strength of buoyant force
+          ambientTemp   = 0.5;  // reference temperature
+    const dt = 0.02;            // fixed timestep
+    avg_density = ambientTemp; // average density for buoyancy
+    prev_avg_density = ambientTemp; // previous average density for buoyancy
+
+    // FLUID STATE ARRAYS
+    let u        = new Float32Array(size*size),
+        v        = new Float32Array(size*size),
+        u_prev   = new Float32Array(size*size),
+        v_prev   = new Float32Array(size*size),
+        dens     = new Float32Array(size*size),
+        dens_prev= new Float32Array(size*size);
+
+    // scratch arrays for solver
+    const u0    = new Float32Array(size*size),
+          v0    = new Float32Array(size*size),
+          dens0 = new Float32Array(size*size);
+
+    // initialize all cells to ambient temperature
+    for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
+
+    // UI STATE
+    let steps      = 5,  // sub-steps per frame
+        heatRadius = 5,
+        heatAmp    = 0.2,
+        coolRate   = 0.001,
+        heating    = false,
+        mX = 0, mY = 0;
+
+    // DOM REFS
+    const canvas      = document.getElementById('canvas'),
+          ctx         = canvas.getContext('2d'),
+          timeSlider  = document.getElementById('timeScale'),
+          timeVal     = document.getElementById('timeScaleVal'),
+          radiusSlider= document.getElementById('heatSize'),
+          radiusVal   = document.getElementById('heatSizeVal'),
+          ampSlider   = document.getElementById('heatAmp'),
+          ampVal      = document.getElementById('heatAmpVal'),
+          coolSlider  = document.getElementById('coolRate'),
+          coolVal     = document.getElementById('coolRateVal');
+
+    // SLIDER HANDLERS
+    timeSlider.oninput   = () => { steps = +timeSlider.value; timeVal.textContent = steps; };
+    radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; };
+    ampSlider.oninput    = () => { heatAmp = +ampSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
+    coolSlider.oninput   = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(3); };
+
+    // MOUSE EVENTS FOR HEATING
+    canvas.onmousedown = () => heating = true;
+    canvas.onmouseup   = () => heating = false;
+    canvas.onmousemove = e => {
+      const r = canvas.getBoundingClientRect();
+      mX = e.clientX - r.left;
+      mY = e.clientY - r.top;
+    };
+
+    // INDEX UTILITY: (i,j) → 1D
+    function IX(i,j){ return i + j*size; }
+
+    // NO-FLUX BOUNDARIES
+    function setBnd(b, x) {
+      for (let i = 1; i <= N; i++) {
+        x[IX(0,   i)] = b===1 ? -x[IX(1, i)] : x[IX(1, i)];
+        x[IX(N+1, i)] = b===1 ? -x[IX(N, i)] : x[IX(N, i)];
+        x[IX(i,   0)] = b===2 ? -x[IX(i, 1)] : x[IX(i, 1)];
+        x[IX(i, N+1)] = b===2 ? -x[IX(i, N)] : x[IX(i, N)];
+      }
+      // corners
+      x[IX(0,   0)]     = 0.5*(x[IX(1,0)]   + x[IX(0,1)]);
+      x[IX(0,   N+1)]   = 0.5*(x[IX(1,N+1)]+ x[IX(0,N)]);
+      x[IX(N+1, 0)]     = 0.5*(x[IX(N,0)]   + x[IX(N+1,1)]);
+      x[IX(N+1, N+1)]   = 0.5*(x[IX(N, N+1)]+ x[IX(N+1,N)]);
+    }
+
+    // GAUSS–SEIDEL SOLVER
+    function linSolve(b, x, x0, a, c) {
+      for (let k = 0; k < iter; k++) {
+        for (let j = 1; j <= N; j++) {
+          for (let i = 1; i <= N; i++) {
+            x[IX(i,j)] = (x0[IX(i,j)] + a*(
+              x[IX(i-1,j)] + x[IX(i+1,j)] +
+              x[IX(i, j-1)] + x[IX(i, j+1)]
+            ))/c;
+          }
+        }
+        setBnd(b, x);
+      }
+    }
+
+    // DIFFUSION
+    function diffuse(b, x, x0, diff) {
+      const a = dt * diff * N * N;
+      linSolve(b, x, x0, a, 1 + 4*a);
+    }
+
+    // ADVECTION
+    function advect(b, d, d0, u, v) {
+      const dt0 = dt * N;
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          let x = i - dt0 * u[IX(i,j)];
+          let y = j - dt0 * v[IX(i,j)];
+          x = Math.max(0.5, Math.min(N + 0.5, x));
+          y = Math.max(0.5, Math.min(N + 0.5, y));
+          const i0 = Math.floor(x), i1 = i0 + 1;
+          const j0 = Math.floor(y), j1 = j0 + 1;
+          const s1 = x - i0, s0 = 1 - s1;
+          const t1 = y - j0, t0 = 1 - t1;
+          d[IX(i,j)] =
+            s0*(t0*d0[IX(i0,j0)] + t1*d0[IX(i0,j1)]) +
+            s1*(t0*d0[IX(i1,j0)] + t1*d0[IX(i1,j1)]);
+        }
+      }
+      setBnd(b, d);
+    }
+
+    // MAKE VELOCITY DIV-FREE
+    function project(u, v, p, div) {
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          div[IX(i,j)] = -0.5*(
+            u[IX(i+1,j)] - u[IX(i-1,j)] +
+            v[IX(i, j+1)] - v[IX(i, j-1)]
+          )/N;
+          p[IX(i,j)] = 0;
+        }
+      }
+      setBnd(0, div);
+      setBnd(0, p);
+      linSolve(0, p, div, 1, 4);
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          u[IX(i,j)] -= 0.5 * N * (p[IX(i+1,j)] - p[IX(i-1,j)]);
+          v[IX(i,j)] -= 0.5 * N * (p[IX(i, j+1)] - p[IX(i, j-1)]);
+        }
+      }
+      setBnd(1, u);
+      setBnd(2, v);
+    }
+
+    // ADD SOURCES (velocity or density)
+    function addSource(x, s) {
+      for (let i = 0; i < x.length; i++) {
+        x[i] += dt * s[i];
+      }
+    }
+
+    // DRAW TEMPERATURE FIELD
+    function renderDensity() {
+      const cellW = canvas.width  / N;
+      const cellH = canvas.height / N;
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          // map dens ∈ [0,1] → t ∈ [0,1]
+          const T = dens[IX(i,j)];
+          const t = Math.max(0, Math.min(1, T));
+          // hue from blue (cold) to red (hot)
+          const hue = (1 - t)*240;
+          ctx.fillStyle = `hsl(${hue},100%,50%)`;
+          // invert y so j=1 is bottom
+          ctx.fillRect(
+            (i-1)*cellW,
+            canvas.height - j*cellH,
+            cellW, cellH
+          );
+        }
+      }
+    }
+
+    // ONE FULL TIME-STEP
+    function simulate() {
+      // clear old sources
+      u_prev.fill(0);
+      v_prev.fill(0);
+      dens_prev.fill(0);
+
+      // 1) heating injection
+      if (heating) {
+        const cellW = canvas.width  / N;
+        const cellH = canvas.height / N;
+        const ci = Math.floor(mX / cellW) + 1;
+        const cj = N + 1 - Math.floor(mY / cellH);
+        for (let di = -heatRadius; di <= heatRadius; di++) {
+          for (let dj = -heatRadius; dj <= heatRadius; dj++) {
+            const ii = ci + di, jj = cj + dj;
+            if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
+              const d2 = di*di + dj*dj;
+              if (d2 <= heatRadius*heatRadius) {
+                const w = Math.exp(-d2/(2*heatRadius*heatRadius));
+                const id = IX(ii,jj);
+                dens_prev[id] += heatAmp * w;
+              }
+            }
+          }
+        }
+      }
+
+      
+
+      // 2) continuous buoyancy (hot rises, cool sinks)
+      prev_avg_density = avg_density
+      avg_density = 0;
+      for (let j = 1; j <= N; j++) {
+        for (let i = 1; i <= N; i++) {
+          const id = IX(i,j);
+          avg_density += dens[id]; // accumulate density for buoyancy
+          const anomaly = dens[id] - prev_avg_density;
+          // hotter than ambient → upward (positive v)
+          v_prev[id] += buoyancyCoeff * anomaly;
+        }
+      }
+      avg_density /= N*N; // average density of the grid
+      // buoyancy force is proportional to the difference from the average density
+      
+
+      // 3) VELOCITY STEP
+      addSource(u, u_prev);
+      addSource(v, v_prev);
+
+      // diffuse u,v
+      u0.set(u);
+      diffuse(1, u, u0, visc);
+      v0.set(v);
+      diffuse(2, v, v0, visc);
+
+      // project
+      project(u, v, u0, v0);
+
+      // advect u,v
+      u0.set(u);
+      v0.set(v);
+      advect(1, u, u0, u0, v0);
+      advect(2, v, v0, u0, v0);
+
+      // project again
+      project(u, v, u0, v0);
+
+      // 4) DENSITY STEP
+      addSource(dens, dens_prev);
+
+      dens0.set(dens);
+      diffuse(0, dens, dens0, diff);
+
+      dens0.set(dens);
+      advect(0, dens, dens0, u, v);
+
+      // 5) surface cooling (only top row j=N)
+      for (let k = 0; k < 3; k++) {
+        const j = N - k;                         // top row = j=N, then N-1, N-2
+        const gradient = 1/(k+1);           
+        for (let i = 1; i <= N; i++) {
+            const rate = coolRate * gradient;      
+            const noise = 1 + (Math.random() - 0.5) * 0.2;  // ±10%
+            dens[IX(i, j)] *= (1 - rate * noise);
+            dens[IX(i, j)] = Math.max(0, dens[IX(i, j)]); // clamp to [0,1]
+        }
+    }
+
+      // ensure density boundaries after cooling
+      setBnd(0, dens);
+    }
+
+    // MAIN LOOP
+    function step() {
+      for (let s = 0; s < steps; s++) {
+        simulate();
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      renderDensity();
+      requestAnimationFrame(step);
+    }
+
+    // kick it off
+    canvas.onmousedown = () => heating = true;
+    canvas.onmouseup   = () => heating = false;
+    requestAnimationFrame(step);
+  </script>
+</body>
+</html>

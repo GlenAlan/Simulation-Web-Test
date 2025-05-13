@@ -1,6 +1,4 @@
-// js/convection_sim.js
-
-// GRID & PHYSICS PARAMETERS (Same as before)
+// GRID & PHYSICS PARAMETERS
 const N    = 64,
       size = N + 2,
       iter = 4;
@@ -9,19 +7,19 @@ const diff   = 0.0001,
       buoyancyCoeff = 1.0,
       ambientTemp   = 0.5;
 
-// TIME MANAGEMENT (Same as before)
+// TIME MANAGEMENT
 const physicsDt = 0.02;
 const targetPhysicsRate = 60;
 let accumulatedTime = 0;
 let timeScale = 2.5;
 let lastTimestamp = 0;
 
-// FPS TRACKING (Same as before)
+// FPS TRACKING
 let frameCount = 0;
 let lastFpsUpdate = 0;
 let currentFps = 0;
 
-// FLUID STATE ARRAYS (Same as before)
+// FLUID STATE ARRAYS
 let u        = new Float32Array(size*size),
     v        = new Float32Array(size*size),
     u_prev   = new Float32Array(size*size),
@@ -35,7 +33,7 @@ for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
 let avg_density = ambientTemp;
 let prev_avg_density = ambientTemp;
 
-// UI STATE (Same as before)
+// UI STATE
 let heatRadius = 5,
     heatAmp    = 0.5,
     coolRate   = 0.5,
@@ -44,68 +42,126 @@ let heatRadius = 5,
 
 // DOM REFS
 const canvas      = document.getElementById('canvas');
-const ctx         = canvas ? canvas.getContext('2d') : null;
+let ctx           = canvas ? canvas.getContext('2d') : null; // Made let for re-init if needed
 const timeSlider  = document.getElementById('timeScale');
 const timeVal     = document.getElementById('timeScaleVal');
 const radiusSlider= document.getElementById('heatSize');
 const radiusVal   = document.getElementById('heatSizeVal');
-const ampSlider   = document.getElementById('ampAmp'); // Assuming typo, was heatAmp
-const ampVal      = document.getElementById('heatAmpVal'); // Corrected ID reference
+const heatAmpSlider = document.getElementById('heatAmp');
+const ampVal      = document.getElementById('heatAmpVal');
 const coolSlider  = document.getElementById('coolRate');
 const coolVal     = document.getElementById('coolRateVal');
 const fpsDisplay  = document.getElementById('fps');
 
-// Offscreen canvas (Same as before)
+// Offscreen canvas
 let offscreenCanvas = null;
 let offscreenCtx = null;
 let offscreenImageData = null;
 
 function updateCanvasResolution() {
-    if (!canvas || !ctx) return;
-    const aspectRatioBox = canvas.parentElement;
+    if (!canvas) return;
+    if (!ctx && canvas) ctx = canvas.getContext('2d'); // Ensure ctx is set
+    if (!ctx) return;
+
+    const aspectRatioBox = canvas.parentElement; 
     if (!aspectRatioBox) return;
 
-    const displayRect = aspectRatioBox.getBoundingClientRect();
-    const newWidth = Math.round(displayRect.width);
-    const newHeight = Math.round(displayRect.height);
+    const isFullscreen = document.body.classList.contains('sim-fullscreen-active');
+    let targetWidth, targetHeight;
 
-    if (canvas.width !== newWidth || canvas.height !== newHeight) {
-        canvas.width = newWidth;
-        canvas.height = newHeight;
+    const simStyle = getComputedStyle(aspectRatioBox);
+    const simAspectRatioString = simStyle.getPropertyValue('--aspect-ratio').trim();
+    let simAspectRatio = 1; // Default
+    if (simAspectRatioString) {
+        const parts = simAspectRatioString.split('/');
+        if (parts.length === 2) {
+            simAspectRatio = parseFloat(parts[0]) / parseFloat(parts[1]);
+        } else {
+            simAspectRatio = parseFloat(simAspectRatioString);
+        }
+    }
+    if (isNaN(simAspectRatio) || simAspectRatio <=0) simAspectRatio = 1;
+
+
+    if (isFullscreen) {
+        const container = aspectRatioBox.parentElement; // .sim-canvas-container
+        const viewportWidth = container.clientWidth; 
+        const viewportHeight = container.clientHeight;
+
+        if (viewportWidth / viewportHeight > simAspectRatio) {
+            targetHeight = viewportHeight;
+            targetWidth = targetHeight * simAspectRatio;
+        } else {
+            targetWidth = viewportWidth;
+            targetHeight = targetWidth / simAspectRatio;
+        }
+        aspectRatioBox.style.width = `${targetWidth}px`;
+        aspectRatioBox.style.height = `${targetHeight}px`;
+    } else {
+        aspectRatioBox.style.width = ''; 
+        aspectRatioBox.style.height = '';
+        const boxRect = aspectRatioBox.getBoundingClientRect();
+        targetWidth = boxRect.width;
+        targetHeight = boxRect.height;
+    }
+
+    targetWidth = Math.round(targetWidth);
+    targetHeight = Math.round(targetHeight);
+
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
     }
 }
 
+
 if (canvas) {
+    const bodyObserved = document.body; // Element to observe for class changes
+
     if (typeof ResizeObserver !== 'undefined') {
-        const resizeObserver = new ResizeObserver(entries => {
-             if (entries && entries.length > 0) {
-                updateCanvasResolution();
+        const generalResizeObserver = new ResizeObserver(entries => {
+            updateCanvasResolution();
+        });
+        
+        // Observe a stable parent that dictates sim area width in non-fullscreen
+        // e.g., .simulation-display-area or its parent .simulation-content-main
+        const layoutParent = canvas.closest('.simulation-display-area') || canvas.closest('.simulation-content-main') || document.body;
+        generalResizeObserver.observe(layoutParent);
+        
+        // In fullscreen, .sim-canvas-container becomes the direct resizer
+        // This might need dynamic re-observing, but observing body class change is more robust
+        
+        const fullscreenClassObserver = new MutationObserver((mutationsList) => {
+            for(const mutation of mutationsList) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    updateCanvasResolution(); 
+                    // No need to change what generalResizeObserver observes if it's high enough
+                    break; 
+                }
             }
         });
-        if (canvas.parentElement && canvas.parentElement.classList.contains('sim-aspect-ratio-box')) {
-            resizeObserver.observe(canvas.parentElement);
-        } else {
-             resizeObserver.observe(canvas);
-        }
+        fullscreenClassObserver.observe(bodyObserved, { attributes: true });
     } else {
         window.addEventListener('resize', updateCanvasResolution);
     }
+
     window.addEventListener('load', () => {
-        setTimeout(updateCanvasResolution, 50);
+        setTimeout(updateCanvasResolution, 150); // Increased delay slightly
     });
+    if (document.readyState === "complete" || (document.readyState !== "loading" && !document.documentElement.doScroll)) {
+        setTimeout(updateCanvasResolution, 100);
+    } else {
+        document.addEventListener("DOMContentLoaded", () => setTimeout(updateCanvasResolution, 100));
+    }
 }
 
-// UI Event Listeners (Same as before)
-if(timeSlider) timeSlider.oninput   = () => { timeScale = +timeSlider.value; if(timeVal) timeVal.textContent = timeScale.toFixed(1); };
-if(radiusSlider) radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; if(radiusVal) radiusVal.textContent = heatRadius; };
-// Corrected ampSlider reference if it was a typo
-if(document.getElementById('heatAmp') && ampVal) { // Check if heatAmp exists
-    document.getElementById('heatAmp').oninput = () => { heatAmp = +document.getElementById('heatAmp').value; ampVal.textContent = heatAmp.toFixed(2); };
-} else if (ampSlider && ampVal) { // Fallback to original ampSlider if heatAmp not found
-     ampSlider.oninput = () => { heatAmp = +ampSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
-}
 
-if(coolSlider) coolSlider.oninput   = () => { coolRate = +coolSlider.value; if(coolVal) coolVal.textContent = coolRate.toFixed(2); };
+if(timeSlider && timeVal) timeSlider.oninput = () => { timeScale = +timeSlider.value; timeVal.textContent = timeScale.toFixed(1); };
+if(radiusSlider && radiusVal) radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; };
+if(heatAmpSlider && ampVal) {
+    heatAmpSlider.oninput = () => { heatAmp = +heatAmpSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
+}
+if(coolSlider && coolVal) coolSlider.oninput = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(2); };
 
 
 function updatePosition(e) {
@@ -121,8 +177,13 @@ function updatePosition(e) {
   } else { return; }
   mX = clientX - r.left;
   mY = clientY - r.top;
-  mX = mX * (canvas.width / r.width);
-  mY = mY * (canvas.height / r.height);
+
+  if (r.width > 0 && r.height > 0) { // Avoid division by zero
+    mX = mX * (canvas.width / r.width);
+    mY = mY * (canvas.height / r.height);
+  } else {
+    mX = 0; mY = 0;
+  }
 }
 
 if (canvas) {
@@ -141,9 +202,6 @@ if (canvas) {
     }, { passive: false });
 }
 
-// SIMULATION-SPECIFIC CONTROLS TOGGLE LOGIC REMOVED
-
-// --- FLUID SOLVER LOGIC (Same as before) ---
 function IX(i,j){ return i + j*size; }
 function setBnd(b, x_arr) {
   for (let i = 1; i <= N; i++) {
@@ -220,7 +278,6 @@ function addSource(x_arr, s_arr) {
   for (let i = 0; i < x_arr.length; i++) x_arr[i] += physicsDt * s_arr[i];
 }
 
-// --- RENDER AND SIMULATION STEP LOGIC (Same as before) ---
 function renderDensity() {
     if (!ctx) return;
     if (!offscreenCanvas) {
@@ -264,23 +321,25 @@ function renderDensity() {
 }
 function simulate() {
   u_prev.fill(0); v_prev.fill(0); dens_prev.fill(0);
-  if (heating && canvas && canvas.width > 0) {
-    const simCellW = canvas.width / N;
+  if (heating && canvas && canvas.width > 0 && canvas.height > 0) { 
+    const simCellW = canvas.width / N; 
     const simCellH = canvas.height / N;
-    const ci = Math.floor(mX / simCellW) + 1;
-    const cj = N - Math.floor(mY / simCellH);
+    if (simCellW > 0 && simCellH > 0) { // Avoid division by zero if canvas dimensions are momentarily zero
+        const ci = Math.floor(mX / simCellW) + 1; 
+        const cj = N - Math.floor(mY / simCellH);
 
-    for (let di = -heatRadius; di <= heatRadius; di++) {
-      for (let dj = -heatRadius; dj <= heatRadius; dj++) {
-        const ii = ci + di, jj = cj + dj;
-        if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
-          const d2 = di*di + dj*dj;
-          if (d2 <= heatRadius*heatRadius) {
-            const w = Math.exp(-d2/(2*heatRadius*heatRadius));
-            dens_prev[IX(ii,jj)] += heatAmp * w;
+        for (let di = -heatRadius; di <= heatRadius; di++) {
+          for (let dj = -heatRadius; dj <= heatRadius; dj++) {
+            const ii = ci + di, jj = cj + dj;
+            if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
+              const d2 = di*di + dj*dj;
+              if (d2 <= heatRadius*heatRadius) {
+                const w = Math.exp(-d2/(2*heatRadius*heatRadius));
+                dens_prev[IX(ii,jj)] += heatAmp * w;
+              }
+            }
           }
         }
-      }
     }
   }
   prev_avg_density = avg_density; avg_density = 0;
@@ -325,8 +384,10 @@ function updateFPS(timestamp) {
   }
 }
 function step(timestamp) {
+  if (!ctx && canvas) ctx = canvas.getContext('2d'); // Try to get context again
   if (!ctx) {
       console.error("Canvas context not available. Halting simulation step.");
+      requestAnimationFrame(step); // Keep trying, maybe it initializes later
       return;
   }
   if (!lastTimestamp) {
@@ -342,31 +403,49 @@ function step(timestamp) {
     simulate();
     accumulatedTime -= physicsInterval;
   }
+
   if (canvas.width > 0 && canvas.height > 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     renderDensity();
+  } else {
+    // If canvas size is zero, it might be due to layout still settling.
+    // updateCanvasResolution() is likely being called by observers/event listeners.
+    // Avoid calling it directly here to prevent potential infinite loops on some resize scenarios.
   }
+
   updateFPS(timestamp);
   requestAnimationFrame(step);
 }
 
-// Toggle FPS display with 'F' key (Same as before)
 document.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'f') {
     if(fpsDisplay) fpsDisplay.style.display = fpsDisplay.style.display === 'block' ? 'none' : 'block';
   }
 });
 
-// Initialize slider display values
-const initialHeatAmpElement = document.getElementById('heatAmp');
 if (timeSlider && timeVal) timeVal.textContent = (+timeSlider.value).toFixed(1);
 if (radiusSlider && radiusVal) radiusVal.textContent = radiusSlider.value;
-if (initialHeatAmpElement && ampVal) ampVal.textContent = (+initialHeatAmpElement.value).toFixed(2);
+if (heatAmpSlider && ampVal) ampVal.textContent = (+heatAmpSlider.value).toFixed(2);
 if (coolSlider && coolVal) coolVal.textContent = (+coolSlider.value).toFixed(2);
 
-// Start simulation
-if (ctx) {
-    requestAnimationFrame(step);
+function startSimulationWhenReady() {
+    if (!canvas) {
+        console.error("Canvas element not found.");
+        return;
+    }
+    if (!ctx) ctx = canvas.getContext('2d');
+
+    if (ctx) {
+        // Ensure canvas is sized correctly before the first step
+        // updateCanvasResolution(); // This is now handled by load/DOMContentLoaded listeners
+        requestAnimationFrame(step);
+    } else {
+        console.error("Convection simulation canvas context not found/ready. Aborting simulation start.");
+    }
+}
+
+if (document.readyState === "complete" || (document.readyState !== "loading" && !document.documentElement.doScroll)) {
+    setTimeout(startSimulationWhenReady, 0);
 } else {
-    console.error("Convection simulation canvas or context not found/ready. Aborting simulation start.");
+    document.addEventListener("DOMContentLoaded", startSimulationWhenReady);
 }

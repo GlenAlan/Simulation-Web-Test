@@ -163,8 +163,8 @@
     </div>
     <div id="controls">
       <div id="controls-content">
-        <label>Simulation Speed: <span id="timeScaleVal">1.0</span>x
-          <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="1.0">
+        <label>Simulation Speed: <span id="timeScaleVal">2.5</span>x
+          <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="2.5">
         </label>
         <label>Heating Radius: <span id="heatSizeVal">5</span>
           <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
@@ -192,7 +192,7 @@
     const physicsDt = 0.02;     // physics timestep
     const targetPhysicsRate = 60; // target physics updates per second
     let accumulatedTime = 0;
-    let timeScale = 1.0;
+    let timeScale = 2.5; // simulation speed multiplier
     let lastTimestamp = 0;
     
     // FPS TRACKING

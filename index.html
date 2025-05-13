@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Convection Simulation (Mobile Compatible)</title>
+  <title>Convection Simulation</title>
   <style>
     body { 
       margin: 0; 
@@ -52,7 +52,7 @@
     
     #controls {
       width: 100%;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.30);
       padding: 12px;
       border-radius: 8px;
       box-sizing: border-box;
@@ -145,17 +145,17 @@
     </div>
     <div id="controls">
       <div id="controls-content">
-        <label>Speed: <span id="timeScaleVal">5</span> steps/frame
+        <label>Speed: <span id="timeScaleVal">5</span>x
           <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
         </label>
-        <label>Heating Radius: <span id="heatSizeVal">5</span> cells
+        <label>Heating Radius: <span id="heatSizeVal">5</span>
           <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
         </label>
-        <label>Heat Intensity: <span id="heatAmpVal">0.20</span>
-          <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.20">
+        <label>Heat Intensity: <span id="heatAmpVal">0.50</span>
+          <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.50">
         </label>
-        <label>Surface Cooling: <span id="coolRateVal">0.001</span>
-          <input type="range" id="coolRate" min="0" max="0.01" step="0.001" value="0.001">
+        <label>Surface Cooling: <span id="coolRateVal">0.5</span>
+          <input type="range" id="coolRate" min="0" max="1" step="0.01" value="0.50">
         </label>
       </div>
     </div>
@@ -192,8 +192,8 @@
     // UI STATE
     let steps      = 5,  // sub-steps per frame
         heatRadius = 5,
-        heatAmp    = 0.2,
-        coolRate   = 0.001,
+        heatAmp    = 0.5,
+        coolRate   = 0.5,
         heating    = false,
         mX = 0, mY = 0;
 
@@ -271,7 +271,7 @@
     timeSlider.oninput   = () => { steps = +timeSlider.value; timeVal.textContent = steps; };
     radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; };
     ampSlider.oninput    = () => { heatAmp = +ampSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
-    coolSlider.oninput   = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(3); };
+    coolSlider.oninput   = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(2); };
 
     // Touch and mouse position handler
     function updatePosition(e) {
@@ -565,7 +565,7 @@
         const j = N - k;                         
         const gradient = 1/(k+1);           
         for (let i = 1; i <= N; i++) {
-            const rate = coolRate * gradient;      
+            const rate = coolRate/100 * gradient;      
             const noise = 1 + (Math.random() - 0.5) * 0.2;  // ±10%
             dens[IX(i, j)] *= (1 - rate * noise);
             dens[IX(i, j)] = Math.max(0, dens[IX(i, j)]); // clamp to [0,1]

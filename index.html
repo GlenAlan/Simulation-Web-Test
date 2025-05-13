@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Convection Simulation</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <style>
     body { 
       margin: 0; 
@@ -46,8 +47,11 @@
       height: 100%;
       background: #000;
       touch-action: none;
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
+      /* image-rendering properties for how the browser scales the canvas element itself, if it were scaled by CSS. */
+      /* For drawImage, ctx.imageSmoothingEnabled is key. */
+      image-rendering: -webkit-optimize-contrast; /* Older WebKit */
+      image-rendering: crisp-edges; /* Standard */
+      image-rendering: pixelated; /* Another option for upscaling pixel art */
     }
     
     #controls {
@@ -87,7 +91,8 @@
       border-radius: 3px;
       font-size: 12px;
       color: #fff;
-      display: none;
+      display: none; /* Initially hidden */
+      z-index: 1; /* Ensure it's above canvas content */
     }
     
     /* Hamburger Menu */
@@ -124,15 +129,15 @@
       #controls {
         position: absolute;
         top: 10px;
-        left: -100%;
+        left: -100%; /* Start off-screen */
         width: 80%;
         max-width: 250px;
         transition: left 0.3s ease;
-        z-index: 3;
+        z-index: 3; /* Ensure controls are on top when visible */
       }
       
       #controls.visible {
-        left: 0;
+        left: 10px; /* Slide in, leaving space from edge */
       }
       
       #controls-content {
@@ -167,7 +172,7 @@
         <label>Heat Intensity: <span id="heatAmpVal">0.50</span>
           <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.50">
         </label>
-        <label>Surface Cooling: <span id="coolRateVal">0.5</span>
+        <label>Surface Cooling: <span id="coolRateVal">0.50</span>
           <input type="range" id="coolRate" min="0" max="1" step="0.01" value="0.50">
         </label>
       </div>
@@ -184,11 +189,11 @@
           ambientTemp   = 0.5;  // reference temperature
     
     // TIME MANAGEMENT
-    const physicsDt = 0.02;     // physics timestep (now fixed and separated from rendering)
+    const physicsDt = 0.02;     // physics timestep
     const targetPhysicsRate = 60; // target physics updates per second
-    let accumulatedTime = 0;    // time accumulated since last frame
-    let timeScale = 1.0;        // user-controllable time scale
-    let lastTimestamp = 0;      // last frame timestamp
+    let accumulatedTime = 0;
+    let timeScale = 1.0;
+    let lastTimestamp = 0;
     
     // FPS TRACKING
     let frameCount = 0;
@@ -208,16 +213,15 @@
           v0    = new Float32Array(size*size),
           dens0 = new Float32Array(size*size);
 
-    // initialize all cells to ambient temperature
     for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
 
-    let avg_density = ambientTemp; // average density for buoyancy
-    let prev_avg_density = ambientTemp; // previous average density for buoyancy
+    let avg_density = ambientTemp;
+    let prev_avg_density = ambientTemp;
 
     // UI STATE
     let heatRadius = 5,
         heatAmp    = 0.5,
-        coolRate   = 0.5,
+        coolRate   = 0.5, 
         heating    = false,
         mX = 0, mY = 0;
 
@@ -234,388 +238,335 @@
           coolVal     = document.getElementById('coolRateVal'),
           fpsDisplay  = document.getElementById('fps');
 
-    // Resize canvas to match wrapper dimensions
+    // Offscreen canvas for rendering optimization
+    let offscreenCanvas = null;
+    let offscreenCtx = null;
+    let offscreenImageData = null; // Will be N x N
+
     function resizeCanvas() {
       const wrapper = canvas.parentElement;
       const rect = wrapper.getBoundingClientRect();
-      
-      // Set the canvas dimensions to match the wrapper's actual size
       canvas.width = rect.width;
       canvas.height = rect.height;
     }
 
-    // Adjust simulation to fit properly on screen
     function adjustSimulationSize() {
       const container = document.querySelector('.container');
       const canvasWrapper = document.querySelector('.canvas-wrapper');
-      const controlsHeight = document.getElementById('controls').offsetHeight;
+      const controlsEl = document.getElementById('controls');
+      const controlsHeight = controlsEl ? controlsEl.offsetHeight : 0;
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       
-      // Calculate available height (account for margins)
-      const availableHeight = viewportHeight - 40; // 20px top and bottom margin
+      const availableHeight = viewportHeight - 40; 
       
       if (window.innerWidth <= 600) {
-        // Mobile: center the canvas on screen
         const maxDimension = Math.min(viewportWidth * 0.95, availableHeight * 0.8);
         canvasWrapper.style.width = maxDimension + 'px';
         canvasWrapper.style.paddingBottom = maxDimension + 'px';
         container.style.margin = '20px auto';
       } else {
-        // Desktop: ensure simulation + controls fit on screen
-        const maxCanvasHeight = availableHeight - controlsHeight - 20; // 20px for margins
-        const maxWidth = Math.min(viewportWidth * 0.9, 600); // Use 90% of viewport width, max 600px
+        const maxCanvasHeight = availableHeight - controlsHeight - 20;
+        const maxWidth = Math.min(viewportWidth * 0.9, 600);
         const maxCanvasWidth = maxWidth;
-        
-        // Use the smaller of width or height to ensure it fits
         const maxDimension = Math.min(maxCanvasWidth, maxCanvasHeight);
         
         canvasWrapper.style.width = maxDimension + 'px';
         canvasWrapper.style.paddingBottom = maxDimension + 'px';
-        
-        // Center the container
         container.style.margin = '20px auto';
       }
-      
-      // Resize canvas to match wrapper
       resizeCanvas();
     }
     
-    // Ensure canvas resizes when window size changes
     window.addEventListener('load', () => {
       adjustSimulationSize();
-      // Trigger resize again after a short delay to account for any DOM rendering delays
-      setTimeout(adjustSimulationSize, 100);
+      setTimeout(adjustSimulationSize, 100); 
     });
-    
-    window.addEventListener('resize', () => {
-      adjustSimulationSize();
-    });
+    window.addEventListener('resize', adjustSimulationSize);
 
-    // SLIDER HANDLERS
     timeSlider.oninput   = () => { timeScale = +timeSlider.value; timeVal.textContent = timeScale.toFixed(1); };
     radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; };
     ampSlider.oninput    = () => { heatAmp = +ampSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
     coolSlider.oninput   = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(2); };
 
-    // Touch and mouse position handler
     function updatePosition(e) {
       const r = canvas.getBoundingClientRect();
       let clientX, clientY;
       
-      // Handle both touch and mouse events
-      if (e.touches) { // Touch event
+      if (e.touches && e.touches.length > 0) {
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
-      } else { // Mouse event
+      } else if (e.clientX !== undefined) { 
         clientX = e.clientX;
         clientY = e.clientY;
+      } else {
+        return; 
       }
       
       mX = clientX - r.left;
       mY = clientY - r.top;
       
-      // Scale to canvas coordinates if the canvas is resized
       mX = mX * (canvas.width / r.width);
       mY = mY * (canvas.height / r.height);
     }
 
-    // MOUSE EVENTS
-    canvas.addEventListener('mousedown', () => heating = true);
+    canvas.addEventListener('mousedown', (e) => { heating = true; updatePosition(e); });
     canvas.addEventListener('mouseup', () => heating = false);
     canvas.addEventListener('mouseleave', () => heating = false);
-    canvas.addEventListener('mousemove', updatePosition);
+    canvas.addEventListener('mousemove', (e) => { if(heating) updatePosition(e); });
 
-    // TOUCH EVENTS
+
     canvas.addEventListener('touchstart', (e) => {
-      e.preventDefault(); // Prevent default touch behavior
-      heating = true;
-      updatePosition(e);
+        e.preventDefault(); 
+        heating = true;
+        updatePosition(e);
     });
     canvas.addEventListener('touchend', () => heating = false);
     canvas.addEventListener('touchcancel', () => heating = false);
     canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault(); // Prevent scrolling
-      updatePosition(e);
+      e.preventDefault(); 
+      if (heating) updatePosition(e);
     });
     
-    // Hamburger menu toggle
     const menuToggle = document.getElementById('menu-toggle');
     const controlsPanel = document.getElementById('controls');
     
-    menuToggle.addEventListener('click', () => {
+    menuToggle.addEventListener('click', (e) => {
+      e.stopPropagation(); 
       controlsPanel.classList.toggle('visible');
     });
     
-    // Close menu when clicking outside
     document.addEventListener('click', (e) => {
       if (window.innerWidth <= 600) {
-        if (!controlsPanel.contains(e.target) && !menuToggle.contains(e.target)) {
+        if (controlsPanel.classList.contains('visible') && !controlsPanel.contains(e.target) && e.target !== menuToggle) {
           controlsPanel.classList.remove('visible');
         }
       }
     });
 
-    // INDEX UTILITY: (i,j) → 1D
     function IX(i,j){ return i + j*size; }
 
-    // NO-FLUX BOUNDARIES
-    function setBnd(b, x) {
+    function setBnd(b, x_arr) {
       for (let i = 1; i <= N; i++) {
-        x[IX(0,   i)] = b===1 ? -x[IX(1, i)] : x[IX(1, i)];
-        x[IX(N+1, i)] = b===1 ? -x[IX(N, i)] : x[IX(N, i)];
-        x[IX(i,   0)] = b===2 ? -x[IX(i, 1)] : x[IX(i, 1)];
-        x[IX(i, N+1)] = b===2 ? -x[IX(i, N)] : x[IX(i, N)];
+        x_arr[IX(0,   i)] = b===1 ? -x_arr[IX(1, i)] : x_arr[IX(1, i)];
+        x_arr[IX(N+1, i)] = b===1 ? -x_arr[IX(N, i)] : x_arr[IX(N, i)];
+        x_arr[IX(i,   0)] = b===2 ? -x_arr[IX(i, 1)] : x_arr[IX(i, 1)];
+        x_arr[IX(i, N+1)] = b===2 ? -x_arr[IX(i, N)] : x_arr[IX(i, N)];
       }
-      // corners
-      x[IX(0,   0)]     = 0.5*(x[IX(1,0)]   + x[IX(0,1)]);
-      x[IX(0,   N+1)]   = 0.5*(x[IX(1,N+1)]+ x[IX(0,N)]);
-      x[IX(N+1, 0)]     = 0.5*(x[IX(N,0)]   + x[IX(N+1,1)]);
-      x[IX(N+1, N+1)]   = 0.5*(x[IX(N, N+1)]+ x[IX(N+1,N)]);
+      x_arr[IX(0,   0)]   = 0.5*(x_arr[IX(1,0)]   + x_arr[IX(0,1)]);
+      x_arr[IX(0,   N+1)] = 0.5*(x_arr[IX(1,N+1)] + x_arr[IX(0,N)]);
+      x_arr[IX(N+1, 0)]   = 0.5*(x_arr[IX(N,0)]   + x_arr[IX(N+1,1)]);
+      x_arr[IX(N+1, N+1)] = 0.5*(x_arr[IX(N, N+1)]+ x_arr[IX(N+1,N)]);
     }
 
-    // GAUSS–SEIDEL SOLVER
-    function linSolve(b, x, x0, a, c) {
+    function linSolve(b, x_arr, x0_arr, a, c) {
+      const c_inv = 1.0 / c; 
       for (let k = 0; k < iter; k++) {
         for (let j = 1; j <= N; j++) {
           for (let i = 1; i <= N; i++) {
-            x[IX(i,j)] = (x0[IX(i,j)] + a*(
-              x[IX(i-1,j)] + x[IX(i+1,j)] +
-              x[IX(i, j-1)] + x[IX(i, j+1)]
-            ))/c;
+            x_arr[IX(i,j)] = (x0_arr[IX(i,j)] + a*(
+              x_arr[IX(i-1,j)] + x_arr[IX(i+1,j)] +
+              x_arr[IX(i, j-1)] + x_arr[IX(i, j+1)]
+            )) * c_inv; 
           }
         }
-        setBnd(b, x);
+        setBnd(b, x_arr);
       }
     }
 
-    // DIFFUSION
-    function diffuse(b, x, x0, diff) {
-      const a = physicsDt * diff * N * N;
-      linSolve(b, x, x0, a, 1 + 4*a);
+    function diffuse(b, x_arr, x0_arr, diff_coeff) { 
+      const a = physicsDt * diff_coeff * N * N;
+      linSolve(b, x_arr, x0_arr, a, 1 + 4*a);
     }
 
-    // ADVECTION
-    function advect(b, d, d0, u, v) {
+    function advect(b, d_arr, d0_arr, u_vel, v_vel) { 
       const dt0 = physicsDt * N;
       for (let j = 1; j <= N; j++) {
         for (let i = 1; i <= N; i++) {
-          let x = i - dt0 * u[IX(i,j)];
-          let y = j - dt0 * v[IX(i,j)];
-          x = Math.max(0.5, Math.min(N + 0.5, x));
-          y = Math.max(0.5, Math.min(N + 0.5, y));
-          const i0 = Math.floor(x), i1 = i0 + 1;
-          const j0 = Math.floor(y), j1 = j0 + 1;
-          const s1 = x - i0, s0 = 1 - s1;
-          const t1 = y - j0, t0 = 1 - t1;
-          d[IX(i,j)] =
-            s0*(t0*d0[IX(i0,j0)] + t1*d0[IX(i0,j1)]) +
-            s1*(t0*d0[IX(i1,j0)] + t1*d0[IX(i1,j1)]);
+          let x_coord = i - dt0 * u_vel[IX(i,j)]; 
+          let y_coord = j - dt0 * v_vel[IX(i,j)]; 
+          x_coord = Math.max(0.5, Math.min(N + 0.5, x_coord));
+          y_coord = Math.max(0.5, Math.min(N + 0.5, y_coord));
+          const i0 = Math.floor(x_coord), i1 = i0 + 1;
+          const j0 = Math.floor(y_coord), j1 = j0 + 1;
+          const s1 = x_coord - i0, s0 = 1 - s1;
+          const t1 = y_coord - j0, t0 = 1 - t1;
+          d_arr[IX(i,j)] =
+            s0*(t0*d0_arr[IX(i0,j0)] + t1*d0_arr[IX(i0,j1)]) +
+            s1*(t0*d0_arr[IX(i1,j0)] + t1*d0_arr[IX(i1,j1)]);
         }
       }
-      setBnd(b, d);
+      setBnd(b, d_arr);
     }
 
-    // MAKE VELOCITY DIV-FREE
-    function project(u, v, p, div) {
+    function project(u_vel, v_vel, p_arr, div_arr) { 
+      const h_inv = 1.0 / N; 
       for (let j = 1; j <= N; j++) {
         for (let i = 1; i <= N; i++) {
-          div[IX(i,j)] = -0.5*(
-            u[IX(i+1,j)] - u[IX(i-1,j)] +
-            v[IX(i, j+1)] - v[IX(i, j-1)]
-          )/N;
-          p[IX(i,j)] = 0;
+          div_arr[IX(i,j)] = -0.5 * h_inv * (
+            u_vel[IX(i+1,j)] - u_vel[IX(i-1,j)] +
+            v_vel[IX(i, j+1)] - v_vel[IX(i, j-1)]
+          );
+          p_arr[IX(i,j)] = 0;
         }
       }
-      setBnd(0, div);
-      setBnd(0, p);
-      linSolve(0, p, div, 1, 4);
+      setBnd(0, div_arr);
+      setBnd(0, p_arr);
+      linSolve(0, p_arr, div_arr, 1, 4);
+
+      const N_half = 0.5 * N; 
       for (let j = 1; j <= N; j++) {
         for (let i = 1; i <= N; i++) {
-          u[IX(i,j)] -= 0.5 * N * (p[IX(i+1,j)] - p[IX(i-1,j)]);
-          v[IX(i,j)] -= 0.5 * N * (p[IX(i, j+1)] - p[IX(i, j-1)]);
+          u_vel[IX(i,j)] -= N_half * (p_arr[IX(i+1,j)] - p_arr[IX(i-1,j)]);
+          v_vel[IX(i,j)] -= N_half * (p_arr[IX(i, j+1)] - p_arr[IX(i, j-1)]);
         }
       }
-      setBnd(1, u);
-      setBnd(2, v);
+      setBnd(1, u_vel);
+      setBnd(2, v_vel);
     }
 
-    // ADD SOURCES (velocity or density)
-    function addSource(x, s) {
-      for (let i = 0; i < x.length; i++) {
-        x[i] += physicsDt * s[i];
+    function addSource(x_arr, s_arr) { 
+      for (let i = 0; i < x_arr.length; i++) {
+        x_arr[i] += physicsDt * s_arr[i];
       }
     }
-
-    // DRAW TEMPERATURE FIELD WITH ANTI-ALIASING
+    
     function renderDensity() {
-      const cellW = canvas.width / N;
-      const cellH = canvas.height / N;
-      
-      // Use image data to avoid grid lines
-      const imageData = ctx.createImageData(canvas.width, canvas.height);
-      const data = imageData.data;
-      
-      for (let j = 1; j <= N; j++) {
-        for (let i = 1; i <= N; i++) {
-          // map dens ∈ [0,1] → t ∈ [0,1]
-          const T = dens[IX(i,j)];
-          const t = Math.max(0, Math.min(1, T));
-          
-          // Calculate color using HSL to RGB conversion
-          // hue from blue (240) to red (0)
-          const hue = (1 - t) * 240;
-          
-          // Convert HSL to RGB
-          const h = hue / 60;
-          const s = 1;
-          const l = 0.5;
-          
-          const c = (1 - Math.abs(2 * l - 1)) * s;
-          const x = c * (1 - Math.abs(h % 2 - 1));
-          const m = l - c/2;
-          
-          let r, g, b;
-          
-          if (h >= 0 && h < 1) { r = c; g = x; b = 0; }
-          else if (h >= 1 && h < 2) { r = x; g = c; b = 0; }
-          else if (h >= 2 && h < 3) { r = 0; g = c; b = x; }
-          else if (h >= 3 && h < 4) { r = 0; g = x; b = c; }
-          else if (h >= 4 && h < 5) { r = x; g = 0; b = c; }
-          else { r = c; g = 0; b = x; }
-          
-          // Scale and apply base luminance
-          r = Math.round((r + m) * 255);
-          g = Math.round((g + m) * 255);
-          b = Math.round((b + m) * 255);
-          
-          // Fill the corresponding rectangle in the image data
-          const startX = Math.floor((i-1) * cellW);
-          const startY = Math.floor(canvas.height - j * cellH);
-          const endX = Math.floor(i * cellW);
-          const endY = Math.floor(canvas.height - (j-1) * cellH);
-          
-          for (let y = startY; y < endY; y++) {
-            for (let x = startX; x < endX; x++) {
-              if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
-                const index = (y * canvas.width + x) * 4;
-                data[index] = r;
-                data[index + 1] = g;
-                data[index + 2] = b;
-                data[index + 3] = 255; // alpha
-              }
-            }
-          }
+        if (!offscreenCanvas) {
+            offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = N;
+            offscreenCanvas.height = N;
+            offscreenCtx = offscreenCanvas.getContext('2d');
+            offscreenImageData = offscreenCtx.createImageData(N, N);
         }
-      }
-      
-      ctx.putImageData(imageData, 0, 0);
+
+        const data = offscreenImageData.data;
+
+        for (let y_px = 0; y_px < N; y_px++) { 
+            for (let x_px = 0; x_px < N; x_px++) { 
+                const sim_i = x_px + 1;
+                const sim_j = N - y_px; 
+
+                const T_val = dens[IX(sim_i, sim_j)]; 
+                const t = Math.max(0, Math.min(1, T_val)); 
+
+                const hue = (1 - t) * 240; 
+                const s_hsl = 1.0;
+                const l_hsl = 0.5;
+                
+                const c_hsl = (1 - Math.abs(2 * l_hsl - 1)) * s_hsl;
+                const x_hsl_component = c_hsl * (1 - Math.abs((hue / 60) % 2 - 1));
+                const m_hsl = l_hsl - c_hsl / 2;
+                
+                let r_norm, g_norm, b_norm;
+                const h_prime = hue / 60;
+
+                if (h_prime >= 0 && h_prime < 1) { r_norm = c_hsl; g_norm = x_hsl_component; b_norm = 0; }
+                else if (h_prime >= 1 && h_prime < 2) { r_norm = x_hsl_component; g_norm = c_hsl; b_norm = 0; }
+                else if (h_prime >= 2 && h_prime < 3) { r_norm = 0; g_norm = c_hsl; b_norm = x_hsl_component; }
+                else if (h_prime >= 3 && h_prime < 4) { r_norm = 0; g_norm = x_hsl_component; b_norm = c_hsl; }
+                else if (h_prime >= 4 && h_prime < 5) { r_norm = x_hsl_component; g_norm = 0; b_norm = c_hsl; }
+                else { r_norm = c_hsl; g_norm = 0; b_norm = x_hsl_component; } 
+                
+                const R = Math.round((r_norm + m_hsl) * 255);
+                const G = Math.round((g_norm + m_hsl) * 255);
+                const B = Math.round((b_norm + m_hsl) * 255);
+                
+                const index = (y_px * N + x_px) * 4;
+                data[index]     = R;
+                data[index + 1] = G;
+                data[index + 2] = B;
+                data[index + 3] = 255; 
+            }
+        }
+        offscreenCtx.putImageData(offscreenImageData, 0, 0);
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false; 
+        // ctx.webkitImageSmoothingEnabled = false; // Covered by imageSmoothingEnabled
+        // ctx.msImageSmoothingEnabled = false; // Covered by imageSmoothingEnabled
+        
+        ctx.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
     }
 
-    // ONE PHYSICS TIME-STEP
+
     function simulate() {
-      // clear old sources
       u_prev.fill(0);
       v_prev.fill(0);
       dens_prev.fill(0);
 
-      // 1) heating injection
       if (heating) {
-        const cellW = canvas.width / N;
+        const cellW = canvas.width / N; 
         const cellH = canvas.height / N;
         const ci = Math.floor(mX / cellW) + 1;
-        const cj = N + 1 - Math.floor(mY / cellH);
+        const cj = N - Math.floor(mY / cellH); // mY=0 (top) -> cj=N (sim top)
+        
         for (let di = -heatRadius; di <= heatRadius; di++) {
           for (let dj = -heatRadius; dj <= heatRadius; dj++) {
             const ii = ci + di, jj = cj + dj;
             if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
               const d2 = di*di + dj*dj;
-              if (d2 <= heatRadius*heatRadius) {
-                const w = Math.exp(-d2/(2*heatRadius*heatRadius));
-                const id = IX(ii,jj);
-                dens_prev[id] += heatAmp * w;
+              if (d2 <= heatRadius*heatRadius) { 
+                const w = Math.exp(-d2/(2*heatRadius*heatRadius)); 
+                dens_prev[IX(ii,jj)] += heatAmp * w;
               }
             }
           }
         }
       }
 
-      // 2) continuous buoyancy (hot rises, cool sinks)
       prev_avg_density = avg_density;
       avg_density = 0;
       for (let j = 1; j <= N; j++) {
         for (let i = 1; i <= N; i++) {
           const id = IX(i,j);
-          avg_density += dens[id]; // accumulate density for buoyancy
+          avg_density += dens[id];
           const anomaly = dens[id] - prev_avg_density;
-          // hotter than ambient → upward (positive v)
           v_prev[id] += buoyancyCoeff * anomaly;
         }
       }
-      avg_density /= N*N; // average density of the grid
+      avg_density /= (N*N); 
       
-      // 3) VELOCITY STEP
       addSource(u, u_prev);
       addSource(v, v_prev);
 
-      // diffuse u,v
-      u0.set(u);
-      diffuse(1, u, u0, visc);
-      v0.set(v);
-      diffuse(2, v, v0, visc);
+      u0.set(u); diffuse(1, u, u0, visc);
+      v0.set(v); diffuse(2, v, v0, visc);
+      project(u, v, u0, v0); 
 
-      // project
+      u0.set(u); v0.set(v); 
+      advect(1, u, u0, u0, v0); 
+      advect(2, v, v0, u0, v0); 
       project(u, v, u0, v0);
 
-      // advect u,v
-      u0.set(u);
-      v0.set(v);
-      advect(1, u, u0, u0, v0);
-      advect(2, v, v0, u0, v0);
-
-      // project again
-      project(u, v, u0, v0);
-
-      // 4) DENSITY STEP
       addSource(dens, dens_prev);
+      dens0.set(dens); diffuse(0, dens, dens0, diff);
+      dens0.set(dens); advect(0, dens, dens0, u, v);
 
-      dens0.set(dens);
-      diffuse(0, dens, dens0, diff);
-
-      dens0.set(dens);
-      advect(0, dens, dens0, u, v);
-
-      // 5) surface cooling (only top rows)
       for (let k = 0; k < 3; k++) {
-        const j = N - k;                         
+        const j_cool = N - k;                    
         const gradient = 1/(k+1);           
         for (let i = 1; i <= N; i++) {
-            const rate = coolRate/100 * gradient;      
-            const noise = 1 + (Math.random() - 0.5) * 0.2;  // ±10%
-            dens[IX(i, j)] *= (1 - rate * noise);
-            dens[IX(i, j)] = Math.max(0, dens[IX(i, j)]); // clamp to [0,1]
+            const rate = (coolRate/100) * gradient;      
+            const noise = 1 + (Math.random() - 0.5) * 0.2;
+            const idx = IX(i, j_cool);
+            dens[idx] *= (1 - rate * noise);
+            dens[idx] = Math.max(0, dens[idx]); 
         }
       }
-
-      // ensure density boundaries after cooling
       setBnd(0, dens);
     }
 
-    // UPDATE FPS COUNTER
     function updateFPS(timestamp) {
       frameCount++;
-      
-      // Update FPS every second
       if (timestamp - lastFpsUpdate >= 1000) {
         currentFps = Math.round(frameCount * 1000 / (timestamp - lastFpsUpdate));
         fpsDisplay.textContent = `FPS: ${currentFps}`;
-        
         frameCount = 0;
         lastFpsUpdate = timestamp;
       }
     }
 
-    // MAIN LOOP - NOW USING TIMESTAMP
     function step(timestamp) {
       if (!lastTimestamp) {
         lastTimestamp = timestamp;
@@ -624,59 +575,41 @@
         return;
       }
       
-      // Calculate delta time in seconds
       const deltaTime = (timestamp - lastTimestamp) / 1000;
       lastTimestamp = timestamp;
-      
-      // Limit delta time to avoid spiral of death on slow devices
-      const cappedDeltaTime = Math.min(deltaTime, 0.1);
-      
-      // Add to accumulated time with user's time scale factor
+      const cappedDeltaTime = Math.min(deltaTime, 0.1); 
       accumulatedTime += cappedDeltaTime * timeScale;
       
-      // Fixed timestep physics updates
-      const physicsTimestep = 1.0 / targetPhysicsRate;
-      
-      // While we have enough accumulated time, run physics updates
-      while (accumulatedTime >= physicsTimestep) {
+      const physicsInterval = 1.0 / targetPhysicsRate;
+      while (accumulatedTime >= physicsInterval) {
         simulate();
-        accumulatedTime -= physicsTimestep;
+        accumulatedTime -= physicsInterval;
       }
       
-      // Render the simulation
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height); 
       renderDensity();
-      
-      // Update FPS counter
       updateFPS(timestamp);
-      
-      // Request next frame
       requestAnimationFrame(step);
     }
 
-    // Handle keyboard events for FPS display toggle
     document.addEventListener('keydown', (e) => {
       if (e.key.toLowerCase() === 'f') {
-        const fpsDisplay = document.getElementById('fps');
-        if (fpsDisplay.style.display === 'block') {
-          fpsDisplay.style.display = 'none';
-        } else {
-          fpsDisplay.style.display = 'block';
-        }
+        fpsDisplay.style.display = fpsDisplay.style.display === 'block' ? 'none' : 'block';
       }
     });
     
-    // Handle passive touch events properly
-    function preventScroll(e) {
+    function preventDefaultTouch(e) {
       if (e.target === canvas) {
         e.preventDefault();
       }
     }
-    
-    document.addEventListener('touchmove', preventScroll, { passive: false });
-    document.addEventListener('touchstart', preventScroll, { passive: false });
-    
-    // Start the simulation with requestAnimationFrame
+    document.addEventListener('touchmove', preventDefaultTouch, { passive: false });
+
+    timeVal.textContent = (+timeSlider.value).toFixed(1);
+    radiusVal.textContent = radiusSlider.value;
+    ampVal.textContent = (+ampSlider.value).toFixed(2);
+    coolVal.textContent = (+coolSlider.value).toFixed(2);
+
     requestAnimationFrame(step);
   </script>
 </body>

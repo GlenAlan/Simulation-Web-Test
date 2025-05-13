@@ -9,6 +9,7 @@
       margin: 0; 
       padding: 0;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
@@ -19,33 +20,13 @@
     
     .container {
       position: relative;
-      width: 80%;
-      max-width: 800px;
-      margin: 40px auto;
-    }
-    
-    #controls { 
-      position: absolute; 
-      top: 10px; 
-      left: 10px; 
-      background: rgba(0,0,0,0.7); 
-      padding: 12px; 
-      border-radius: 8px; 
-      z-index: 1;
-      width: calc(100% - 20px);
-      max-width: 300px;
-      box-sizing: border-box;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    }
-    
-    #controls label { 
-      display: block; 
-      margin: 8px 0; 
-      font-size: 14px;
-    }
-    
-    #controls input { 
-      width: 100%; 
+      width: 90%;
+      max-width: 600px;
+      margin: 20px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: visible;
     }
     
     .canvas-wrapper {
@@ -65,45 +46,118 @@
       height: 100%;
       background: #000;
       touch-action: none;
-      /* Remove grid lines by using a single color background */
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
     }
     
-    @media (max-width: 768px) {
+    #controls {
+      width: 100%;
+      background: rgba(0,0,0,0.7);
+      padding: 12px;
+      border-radius: 8px;
+      box-sizing: border-box;
+      margin-top: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    #controls-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    #controls label { 
+      display: block;
+      flex: 1 1 calc(50% - 10px);
+      min-width: 120px;
+      margin: 0;
+      font-size: 14px;
+    }
+    
+    #controls input { 
+      width: 100%;
+    }
+    
+    /* Hamburger Menu */
+    .hamburger {
+      display: none;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      background: rgba(0,0,0,0.7);
+      border-radius: 5px;
+      padding: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .hamburger div {
+      width: 25px;
+      height: 3px;
+      background-color: white;
+      margin: 5px 0;
+      border-radius: 2px;
+    }
+    
+    @media (max-width: 600px) {
       .container {
         width: 95%;
-        margin: 20px auto;
+      }
+      
+      .hamburger {
+        display: block;
       }
       
       #controls {
-        bottom: 10px;
-        top: auto;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 20px);
+        position: absolute;
+        top: 10px;
+        left: -100%;
+        width: 80%;
+        max-width: 250px;
+        transition: left 0.3s ease;
+        z-index: 3;
+      }
+      
+      #controls.visible {
+        left: 0;
+      }
+      
+      #controls-content {
+        flex-direction: column;
+      }
+      
+      #controls label {
+        flex: 1 1 100%;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="hamburger" id="menu-toggle">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
     <div class="canvas-wrapper">
       <canvas id="canvas"></canvas>
     </div>
     <div id="controls">
-      <label>Speed: <span id="timeScaleVal">5</span> steps/frame
-        <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
-      </label>
-      <label>Heating Radius: <span id="heatSizeVal">5</span> cells
-        <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
-      </label>
-      <label>Heat Intensity: <span id="heatAmpVal">0.20</span>
-        <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.20">
-      </label>
-      <label>Surface Cooling: <span id="coolRateVal">0.001</span>
-        <input type="range" id="coolRate" min="0" max="0.01" step="0.001" value="0.001">
-      </label>
+      <div id="controls-content">
+        <label>Speed: <span id="timeScaleVal">5</span> steps/frame
+          <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
+        </label>
+        <label>Heating Radius: <span id="heatSizeVal">5</span> cells
+          <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
+        </label>
+        <label>Heat Intensity: <span id="heatAmpVal">0.20</span>
+          <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.20">
+        </label>
+        <label>Surface Cooling: <span id="coolRateVal">0.001</span>
+          <input type="range" id="coolRate" min="0" max="0.01" step="0.001" value="0.001">
+        </label>
+      </div>
     </div>
   </div>
   <script>
@@ -155,16 +209,63 @@
           coolSlider  = document.getElementById('coolRate'),
           coolVal     = document.getElementById('coolRateVal');
 
-    // Make canvas responsive
+    // Resize canvas to match wrapper dimensions
     function resizeCanvas() {
       const wrapper = canvas.parentElement;
-      canvas.width = wrapper.offsetWidth;
-      canvas.height = wrapper.offsetHeight;
+      const rect = wrapper.getBoundingClientRect();
+      
+      // Set the canvas dimensions to match the wrapper's actual size
+      canvas.width = rect.width;
+      canvas.height = rect.height;
     }
 
-    // Initial resize and listen for window resize
-    window.addEventListener('load', resizeCanvas);
-    window.addEventListener('resize', resizeCanvas);
+    // Adjust simulation to fit properly on screen
+    function adjustSimulationSize() {
+      const container = document.querySelector('.container');
+      const canvasWrapper = document.querySelector('.canvas-wrapper');
+      const controlsHeight = document.getElementById('controls').offsetHeight;
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      
+      // Calculate available height (account for margins)
+      const availableHeight = viewportHeight - 40; // 20px top and bottom margin
+      
+      if (window.innerWidth <= 600) {
+        // Mobile: center the canvas on screen
+        const maxDimension = Math.min(viewportWidth * 0.95, availableHeight * 0.8);
+        canvasWrapper.style.width = maxDimension + 'px';
+        canvasWrapper.style.paddingBottom = maxDimension + 'px';
+        container.style.margin = '20px auto';
+      } else {
+        // Desktop: ensure simulation + controls fit on screen
+        const maxCanvasHeight = availableHeight - controlsHeight - 20; // 20px for margins
+        const maxWidth = Math.min(viewportWidth * 0.9, 600); // Use 90% of viewport width, max 600px
+        const maxCanvasWidth = maxWidth;
+        
+        // Use the smaller of width or height to ensure it fits
+        const maxDimension = Math.min(maxCanvasWidth, maxCanvasHeight);
+        
+        canvasWrapper.style.width = maxDimension + 'px';
+        canvasWrapper.style.paddingBottom = maxDimension + 'px';
+        
+        // Center the container
+        container.style.margin = '20px auto';
+      }
+      
+      // Resize canvas to match wrapper
+      resizeCanvas();
+    }
+    
+    // Ensure canvas resizes when window size changes
+    window.addEventListener('load', () => {
+      adjustSimulationSize();
+      // Trigger resize again after a short delay to account for any DOM rendering delays
+      setTimeout(adjustSimulationSize, 100);
+    });
+    
+    window.addEventListener('resize', () => {
+      adjustSimulationSize();
+    });
 
     // SLIDER HANDLERS
     timeSlider.oninput   = () => { steps = +timeSlider.value; timeVal.textContent = steps; };
@@ -211,6 +312,23 @@
     canvas.addEventListener('touchmove', (e) => {
       e.preventDefault(); // Prevent scrolling
       updatePosition(e);
+    });
+    
+    // Hamburger menu toggle
+    const menuToggle = document.getElementById('menu-toggle');
+    const controlsPanel = document.getElementById('controls');
+    
+    menuToggle.addEventListener('click', () => {
+      controlsPanel.classList.toggle('visible');
+    });
+    
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 600) {
+        if (!controlsPanel.contains(e.target) && !menuToggle.contains(e.target)) {
+          controlsPanel.classList.remove('visible');
+        }
+      }
     });
 
     // INDEX UTILITY: (i,j) → 1D

@@ -7,29 +7,40 @@
   <style>
     body { 
       margin: 0; 
-      overflow: hidden; 
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
       background: #222; 
       color: #fff; 
       font-family: sans-serif;
-      touch-action: none; /* Prevents default touch actions like scrolling */
+    }
+    
+    .container {
+      position: relative;
+      width: 80%;
+      max-width: 800px;
+      margin: 40px auto;
     }
     
     #controls { 
       position: absolute; 
       top: 10px; 
       left: 10px; 
-      background: rgba(0,0,0,0.6); 
-      padding: 10px; 
-      border-radius: 5px; 
+      background: rgba(0,0,0,0.7); 
+      padding: 12px; 
+      border-radius: 8px; 
       z-index: 1;
       width: calc(100% - 20px);
       max-width: 300px;
       box-sizing: border-box;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
     
     #controls label { 
       display: block; 
-      margin: 5px 0; 
+      margin: 8px 0; 
       font-size: 14px;
     }
     
@@ -37,20 +48,37 @@
       width: 100%; 
     }
     
-    canvas { 
-      display: block;
-      background: #000;
-      width: 100vw;
-      height: 100vh;
-      max-width: 100%;
-      max-height: 100%;
-      touch-action: none;
+    .canvas-wrapper {
+      width: 100%;
+      padding-bottom: 100%; /* 1:1 Aspect Ratio */
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
     
-    @media (max-width: 600px) {
+    canvas { 
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      touch-action: none;
+      /* Remove grid lines by using a single color background */
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        width: 95%;
+        margin: 20px auto;
+      }
+      
       #controls {
-        top: auto;
         bottom: 10px;
+        top: auto;
         left: 50%;
         transform: translateX(-50%);
         width: calc(100% - 20px);
@@ -59,22 +87,25 @@
   </style>
 </head>
 <body>
-  <div id="controls">
-    <label>Speed: <span id="timeScaleVal">5</span> steps/frame
-      <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
-    </label>
-    <label>Heating Radius: <span id="heatSizeVal">5</span> cells
-      <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
-    </label>
-    <label>Heat Intensity: <span id="heatAmpVal">0.20</span>
-      <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.20">
-    </label>
-    <label>Surface Cooling: <span id="coolRateVal">0.001</span>
-      <input type="range" id="coolRate" min="0" max="0.01" step="0.001" value="0.001">
-    </label>
+  <div class="container">
+    <div class="canvas-wrapper">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div id="controls">
+      <label>Speed: <span id="timeScaleVal">5</span> steps/frame
+        <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
+      </label>
+      <label>Heating Radius: <span id="heatSizeVal">5</span> cells
+        <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
+      </label>
+      <label>Heat Intensity: <span id="heatAmpVal">0.20</span>
+        <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.20">
+      </label>
+      <label>Surface Cooling: <span id="coolRateVal">0.001</span>
+        <input type="range" id="coolRate" min="0" max="0.01" step="0.001" value="0.001">
+      </label>
+    </div>
   </div>
-
-  <canvas id="canvas"></canvas>
   <script>
     // GRID & PHYSICS PARAMETERS
     const N    = 64,            // interior cells per side
@@ -126,12 +157,13 @@
 
     // Make canvas responsive
     function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const wrapper = canvas.parentElement;
+      canvas.width = wrapper.offsetWidth;
+      canvas.height = wrapper.offsetHeight;
     }
 
     // Initial resize and listen for window resize
-    resizeCanvas();
+    window.addEventListener('load', resizeCanvas);
     window.addEventListener('resize', resizeCanvas);
 
     // SLIDER HANDLERS
@@ -272,27 +304,69 @@
       }
     }
 
-    // DRAW TEMPERATURE FIELD
+    // DRAW TEMPERATURE FIELD WITH ANTI-ALIASING
     function renderDensity() {
       const cellW = canvas.width / N;
       const cellH = canvas.height / N;
+      
+      // Use image data to avoid grid lines
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
       
       for (let j = 1; j <= N; j++) {
         for (let i = 1; i <= N; i++) {
           // map dens ∈ [0,1] → t ∈ [0,1]
           const T = dens[IX(i,j)];
           const t = Math.max(0, Math.min(1, T));
-          // hue from blue (cold) to red (hot)
-          const hue = (1 - t)*240;
-          ctx.fillStyle = `hsl(${hue},100%,50%)`;
-          // invert y so j=1 is bottom
-          ctx.fillRect(
-            (i-1)*cellW,
-            canvas.height - j*cellH,
-            cellW, cellH
-          );
+          
+          // Calculate color using HSL to RGB conversion
+          // hue from blue (240) to red (0)
+          const hue = (1 - t) * 240;
+          
+          // Convert HSL to RGB
+          const h = hue / 60;
+          const s = 1;
+          const l = 0.5;
+          
+          const c = (1 - Math.abs(2 * l - 1)) * s;
+          const x = c * (1 - Math.abs(h % 2 - 1));
+          const m = l - c/2;
+          
+          let r, g, b;
+          
+          if (h >= 0 && h < 1) { r = c; g = x; b = 0; }
+          else if (h >= 1 && h < 2) { r = x; g = c; b = 0; }
+          else if (h >= 2 && h < 3) { r = 0; g = c; b = x; }
+          else if (h >= 3 && h < 4) { r = 0; g = x; b = c; }
+          else if (h >= 4 && h < 5) { r = x; g = 0; b = c; }
+          else { r = c; g = 0; b = x; }
+          
+          // Scale and apply base luminance
+          r = Math.round((r + m) * 255);
+          g = Math.round((g + m) * 255);
+          b = Math.round((b + m) * 255);
+          
+          // Fill the corresponding rectangle in the image data
+          const startX = Math.floor((i-1) * cellW);
+          const startY = Math.floor(canvas.height - j * cellH);
+          const endX = Math.floor(i * cellW);
+          const endY = Math.floor(canvas.height - (j-1) * cellH);
+          
+          for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+              if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                const index = (y * canvas.width + x) * 4;
+                data[index] = r;
+                data[index + 1] = g;
+                data[index + 2] = b;
+                data[index + 3] = 255; // alpha
+              }
+            }
+          }
         }
       }
+      
+      ctx.putImageData(imageData, 0, 0);
     }
 
     // ONE FULL TIME-STEP
@@ -395,12 +469,15 @@
     }
 
     // Handle passive touch events properly
-    document.addEventListener('touchmove', function(e) {
+    function preventScroll(e) {
       if (e.target === canvas) {
         e.preventDefault();
       }
-    }, { passive: false });
-
+    }
+    
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    document.addEventListener('touchstart', preventScroll, { passive: false });
+    
     // Start the simulation
     requestAnimationFrame(step);
   </script>

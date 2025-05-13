@@ -78,6 +78,18 @@
       width: 100%;
     }
     
+    #fps {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      color: #fff;
+      display: none;
+    }
+    
     /* Hamburger Menu */
     .hamburger {
       display: none;
@@ -142,11 +154,12 @@
     </div>
     <div class="canvas-wrapper">
       <canvas id="canvas"></canvas>
+      <div id="fps">FPS: 0</div>
     </div>
     <div id="controls">
       <div id="controls-content">
-        <label>Speed: <span id="timeScaleVal">5</span>x
-          <input type="range" id="timeScale" min="1" max="20" step="1" value="5">
+        <label>Simulation Speed: <span id="timeScaleVal">1.0</span>x
+          <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="1.0">
         </label>
         <label>Heating Radius: <span id="heatSizeVal">5</span>
           <input type="range" id="heatSize" min="1" max="20" step="1" value="5">
@@ -169,10 +182,19 @@
           visc   = 0.0001,      // kinematic viscosity
           buoyancyCoeff = 1.0,  // strength of buoyant force
           ambientTemp   = 0.5;  // reference temperature
-    const dt = 0.02;            // fixed timestep
-    let avg_density = ambientTemp; // average density for buoyancy
-    let prev_avg_density = ambientTemp; // previous average density for buoyancy
-
+    
+    // TIME MANAGEMENT
+    const physicsDt = 0.02;     // physics timestep (now fixed and separated from rendering)
+    const targetPhysicsRate = 60; // target physics updates per second
+    let accumulatedTime = 0;    // time accumulated since last frame
+    let timeScale = 1.0;        // user-controllable time scale
+    let lastTimestamp = 0;      // last frame timestamp
+    
+    // FPS TRACKING
+    let frameCount = 0;
+    let lastFpsUpdate = 0;
+    let currentFps = 0;
+    
     // FLUID STATE ARRAYS
     let u        = new Float32Array(size*size),
         v        = new Float32Array(size*size),
@@ -189,9 +211,11 @@
     // initialize all cells to ambient temperature
     for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
 
+    let avg_density = ambientTemp; // average density for buoyancy
+    let prev_avg_density = ambientTemp; // previous average density for buoyancy
+
     // UI STATE
-    let steps      = 5,  // sub-steps per frame
-        heatRadius = 5,
+    let heatRadius = 5,
         heatAmp    = 0.5,
         coolRate   = 0.5,
         heating    = false,
@@ -207,7 +231,8 @@
           ampSlider   = document.getElementById('heatAmp'),
           ampVal      = document.getElementById('heatAmpVal'),
           coolSlider  = document.getElementById('coolRate'),
-          coolVal     = document.getElementById('coolRateVal');
+          coolVal     = document.getElementById('coolRateVal'),
+          fpsDisplay  = document.getElementById('fps');
 
     // Resize canvas to match wrapper dimensions
     function resizeCanvas() {
@@ -268,7 +293,7 @@
     });
 
     // SLIDER HANDLERS
-    timeSlider.oninput   = () => { steps = +timeSlider.value; timeVal.textContent = steps; };
+    timeSlider.oninput   = () => { timeScale = +timeSlider.value; timeVal.textContent = timeScale.toFixed(1); };
     radiusSlider.oninput = () => { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; };
     ampSlider.oninput    = () => { heatAmp = +ampSlider.value; ampVal.textContent = heatAmp.toFixed(2); };
     coolSlider.oninput   = () => { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(2); };
@@ -366,13 +391,13 @@
 
     // DIFFUSION
     function diffuse(b, x, x0, diff) {
-      const a = dt * diff * N * N;
+      const a = physicsDt * diff * N * N;
       linSolve(b, x, x0, a, 1 + 4*a);
     }
 
     // ADVECTION
     function advect(b, d, d0, u, v) {
-      const dt0 = dt * N;
+      const dt0 = physicsDt * N;
       for (let j = 1; j <= N; j++) {
         for (let i = 1; i <= N; i++) {
           let x = i - dt0 * u[IX(i,j)];
@@ -418,7 +443,7 @@
     // ADD SOURCES (velocity or density)
     function addSource(x, s) {
       for (let i = 0; i < x.length; i++) {
-        x[i] += dt * s[i];
+        x[i] += physicsDt * s[i];
       }
     }
 
@@ -487,7 +512,7 @@
       ctx.putImageData(imageData, 0, 0);
     }
 
-    // ONE FULL TIME-STEP
+    // ONE PHYSICS TIME-STEP
     function simulate() {
       // clear old sources
       u_prev.fill(0);
@@ -576,16 +601,71 @@
       setBnd(0, dens);
     }
 
-    // MAIN LOOP
-    function step() {
-      for (let s = 0; s < steps; s++) {
-        simulate();
+    // UPDATE FPS COUNTER
+    function updateFPS(timestamp) {
+      frameCount++;
+      
+      // Update FPS every second
+      if (timestamp - lastFpsUpdate >= 1000) {
+        currentFps = Math.round(frameCount * 1000 / (timestamp - lastFpsUpdate));
+        fpsDisplay.textContent = `FPS: ${currentFps}`;
+        
+        frameCount = 0;
+        lastFpsUpdate = timestamp;
       }
+    }
+
+    // MAIN LOOP - NOW USING TIMESTAMP
+    function step(timestamp) {
+      if (!lastTimestamp) {
+        lastTimestamp = timestamp;
+        lastFpsUpdate = timestamp;
+        requestAnimationFrame(step);
+        return;
+      }
+      
+      // Calculate delta time in seconds
+      const deltaTime = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+      
+      // Limit delta time to avoid spiral of death on slow devices
+      const cappedDeltaTime = Math.min(deltaTime, 0.1);
+      
+      // Add to accumulated time with user's time scale factor
+      accumulatedTime += cappedDeltaTime * timeScale;
+      
+      // Fixed timestep physics updates
+      const physicsTimestep = 1.0 / targetPhysicsRate;
+      
+      // While we have enough accumulated time, run physics updates
+      while (accumulatedTime >= physicsTimestep) {
+        simulate();
+        accumulatedTime -= physicsTimestep;
+      }
+      
+      // Render the simulation
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       renderDensity();
+      
+      // Update FPS counter
+      updateFPS(timestamp);
+      
+      // Request next frame
       requestAnimationFrame(step);
     }
 
+    // Handle keyboard events for FPS display toggle
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'f') {
+        const fpsDisplay = document.getElementById('fps');
+        if (fpsDisplay.style.display === 'block') {
+          fpsDisplay.style.display = 'none';
+        } else {
+          fpsDisplay.style.display = 'block';
+        }
+      }
+    });
+    
     // Handle passive touch events properly
     function preventScroll(e) {
       if (e.target === canvas) {
@@ -596,7 +676,7 @@
     document.addEventListener('touchmove', preventScroll, { passive: false });
     document.addEventListener('touchstart', preventScroll, { passive: false });
     
-    // Start the simulation
+    // Start the simulation with requestAnimationFrame
     requestAnimationFrame(step);
   </script>
 </body>

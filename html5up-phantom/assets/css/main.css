@@ -40,62 +40,66 @@
 	--color-tile-style6: #8499e7;
 }
 
-/* Dark Mode Styles */
-@media (prefers-color-scheme: dark) {
-  :root {
-	/* Backgrounds */
-	--color-bg: #1e1e1e;
-	--color-bg-alt: #2a2a2a; /* footer */
-	--color-bg-subtle: rgba(255, 255, 255, 0.075); /* code, table stripes */
-	--color-bg-menu: #333333;
-	--color-bg-header-nav: rgba(30, 30, 30, 0.7);
-	--color-bg-button-active-overlay: rgba(242, 132, 158, 0.15);
+/* Dark Mode Styles - Applied when body has 'dark-mode' class */
+body.dark-mode {
+  /* Backgrounds */
+  --color-bg: #1e1e1e;
+  --color-bg-alt: #2a2a2a; /* footer */
+  --color-bg-subtle: rgba(255, 255, 255, 0.075); /* code, table stripes */
+  --color-bg-menu: #333333;
+  --color-bg-header-nav: rgba(30, 30, 30, 0.7);
+  --color-bg-button-active-overlay: rgba(242, 132, 158, 0.15);
 
-	/* Text */
-	--color-text: #e0e0e0;
-	/* --color-text-light: #ffffff; // Stays white for menu, primary button text on accent */
-	--color-text-subtle: rgba(224, 224, 224, 0.5); /* Lighter subtle text */
-	/* --color-accent: #f2849e; // Accent can often stay the same */
-	/* --color-accent-active: #ee5f81; // Accent active can often stay the same */
+  /* Text */
+  --color-text: #e0e0e0;
+  /* --color-text-light: #ffffff; // Stays white for menu, primary button text on accent */
+  --color-text-subtle: rgba(224, 224, 224, 0.5); /* Lighter subtle text */
+  /* --color-accent: #f2849e; // Accent can often stay the same */
+  /* --color-accent-active: #ee5f81; // Accent active can often stay the same */
 
-	/* Borders */
-	--color-border: #444444;
-	--color-border-link: rgba(224, 224, 224, 0.3);
-	--color-border-menu-item: rgba(255, 255, 255, 0.1); /* Menu item border on dark menu */
+  /* Borders */
+  --color-border: #444444;
+  --color-border-link: rgba(224, 224, 224, 0.3);
+  --color-border-menu-item: rgba(255, 255, 255, 0.1); /* Menu item border on dark menu */
 
-	/* Buttons */
-	--color-button-default-shadow: var(--color-text); /* Use main text color for shadow */
-	--color-button-primary-bg: var(--color-accent); /* Primary buttons use accent color */
+  /* Buttons */
+  --color-button-default-shadow: var(--color-text); /* Use main text color for shadow */
+  --color-button-primary-bg: var(--color-accent); /* Primary buttons use accent color */
 
-	/* Tiles */
-	--color-tile-overlay-hover: #111111; /* Darker hover overlay for tiles */
-	/* --opacity-tile-overlay-default: 0.8; // Might need adjustment if colors are too vibrant */
-	--opacity-tile-overlay-hover: 0.5; /* More opaque hover for tiles */
-  }
-
-  select {
-	background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' preserveAspectRatio='none' viewBox='0 0 40 40'%3E%3Cpath d='M9.4,12.3l10.4,10.4l10.4-10.4c0.2-0.2,0.5-0.4,0.9-0.4c0.3,0,0.6,0.1,0.9,0.4l3.3,3.3c0.2,0.2,0.4,0.5,0.4,0.9 c0,0.4-0.1,0.6-0.4,0.9L20.7,31.9c-0.2,0.2-0.5,0.4-0.9,0.4c-0.3,0-0.6-0.1-0.9-0.4L4.3,17.3c-0.2-0.2-0.4-0.5-0.4-0.9 c0-0.4,0.1-0.6,0.4-0.9l3.3-3.3c0.2-0.2,0.5-0.4,0.9-0.4S9.1,12.1,9.4,12.3z' fill='%23888888' /%3E%3C/svg%3E");
-  }
-
-  select option {
-	  background: var(--color-bg-alt); /* Dark background for options */
-	  color: var(--color-text);
-  }
-
-  #header nav ul li a[href="#menu"]:before { /* Hover state icon */
-	background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23f2849e%3B /* var(--color-accent) */ %7D%3C/style%3E%3Cline x1='0' y1='25' x2='100' y2='25' /%3E%3Cline x1='0' y1='50' x2='100' y2='50' /%3E%3Cline x1='0' y1='75' x2='100' y2='75' /%3E%3C/svg%3E");
-  }
-  #header nav ul li a[href="#menu"]:after { /* Default state icon */
-	background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23e0e0e0%3B /* var(--color-text) */ %7D%3C/style%3E%3Cline x1='0' y1='25' x2='100' y2='25' /%3E%3Cline x1='0' y1='50' x2='100' y2='50' /%3E%3Cline x1='0' y1='75' x2='100' y2='75' /%3E%3C/svg%3E");
-  }
-
-  #menu > .close:before { /* Hover state icon */
-	background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23f2849e%3B /* var(--color-accent) */ %7D%3C/style%3E%3Cline x1='15' y1='15' x2='85' y2='85' /%3E%3Cline x1='85' y1='15' x2='15' y2='85' /%3E%3C/svg%3E");
-  }
-  #menu > .close:after { /* Default state icon */
-	background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23ffffff%3B /* var(--color-text-light) */ %7D%3C/style%3E%3Cline x1='15' y1='15' x2='85' y2='85' /%3E%3Cline x1='85' y1='15' x2='15' y2='85' /%3E%3C/svg%3E");
-  }
+  /* Tiles */
+  --color-tile-overlay-hover: #111111; /* Darker hover overlay for tiles */
+  /* --opacity-tile-overlay-default: 0.8; // Might need adjustment if colors are too vibrant */
+  --opacity-tile-overlay-hover: 0.5; /* More opaque hover for tiles */
 }
+
+/* REMOVE or COMMENT OUT the original @media (prefers-color-scheme: dark) block */
+/* @media (prefers-color-scheme: dark) { ... } */
+
+
+/* Styles for specific elements in dark mode, applied via body.dark-mode */
+body.dark-mode select {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' preserveAspectRatio='none' viewBox='0 0 40 40'%3E%3Cpath d='M9.4,12.3l10.4,10.4l10.4-10.4c0.2-0.2,0.5-0.4,0.9-0.4c0.3,0,0.6,0.1,0.9,0.4l3.3,3.3c0.2,0.2,0.4,0.5,0.4,0.9 c0,0.4-0.1,0.6-0.4,0.9L20.7,31.9c-0.2,0.2-0.5,0.4-0.9,0.4c-0.3,0-0.6-0.1-0.9-0.4L4.3,17.3c-0.2-0.2-0.4-0.5-0.4-0.9 c0-0.4,0.1-0.6,0.4-0.9l3.3-3.3c0.2-0.2,0.5-0.4,0.9-0.4S9.1,12.1,9.4,12.3z' fill='%23cccccc' /%3E%3C/svg%3E"); /* Lighter arrow for dark mode */
+}
+
+body.dark-mode select option {
+	background: var(--color-bg-alt); /* Dark background for options */
+	color: var(--color-text);
+}
+
+body.dark-mode #header nav ul li a[href="#menu"]:before { /* Hover state icon */
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23f2849e%3B /* var(--color-accent) */ %7D%3C/style%3E%3Cline x1='0' y1='25' x2='100' y2='25' /%3E%3Cline x1='0' y1='50' x2='100' y2='50' /%3E%3Cline x1='0' y1='75' x2='100' y2='75' /%3E%3C/svg%3E");
+}
+body.dark-mode #header nav ul li a[href="#menu"]:after { /* Default state icon */
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23e0e0e0%3B /* var(--color-text) */ %7D%3C/style%3E%3Cline x1='0' y1='25' x2='100' y2='25' /%3E%3Cline x1='0' y1='50' x2='100' y2='50' /%3E%3Cline x1='0' y1='75' x2='100' y2='75' /%3E%3C/svg%3E");
+}
+
+body.dark-mode #menu > .close:before { /* Hover state icon */
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23f2849e%3B /* var(--color-accent) */ %7D%3C/style%3E%3Cline x1='15' y1='15' x2='85' y2='85' /%3E%3Cline x1='85' y1='15' x2='15' y2='85' /%3E%3C/svg%3E");
+}
+body.dark-mode #menu > .close:after { /* Default state icon */
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23ffffff%3B /* var(--color-text-light) */ %7D%3C/style%3E%3Cline x1='15' y1='15' x2='85' y2='85' /%3E%3Cline x1='85' y1='15' x2='15' y2='85' /%3E%3C/svg%3E");
+}
+
 
 /*
 	Phantom by HTML5 UP
@@ -196,6 +200,7 @@ input, select, textarea {
 
 	body {
 		background: var(--color-bg);
+		transition: background-color 0.3s ease, color 0.3s ease;
 	}
 
 		body.is-preload *, body.is-preload *:before, body.is-preload *:after {
@@ -218,6 +223,11 @@ input, select, textarea {
 		font-weight: 300;
 		line-height: 1.75;
 	}
+
+	input, select, textarea { /* Added for color transition on these elements */
+		transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+	}
+
 
 		@media screen and (max-width: 1680px) {
 
@@ -360,6 +370,7 @@ input, select, textarea {
 		font-style: italic;
 		margin: 0 0 2em 0;
 		padding: 0.5em 0 0.5em 2em;
+		transition: border-left-color 0.3s ease;
 	}
 
 	code {
@@ -370,6 +381,7 @@ input, select, textarea {
 		font-size: 0.9em;
 		margin: 0 0.25em;
 		padding: 0.25em 0.65em;
+		transition: background-color 0.3s ease, border-color 0.3s ease;
 	}
 
 	pre {
@@ -390,6 +402,7 @@ input, select, textarea {
 		border: 0;
 		border-bottom: solid 1px var(--color-border);
 		margin: 2em 0;
+		transition: border-bottom-color 0.3s ease;
 	}
 
 		hr.major {
@@ -1990,6 +2003,7 @@ input, select, textarea {
 			ul.alt li {
 				border-top: solid 1px var(--color-border);
 				padding: 0.5em 0;
+				transition: border-top-color 0.3s ease;
 			}
 
 				ul.alt li:first-child {
@@ -2249,6 +2263,7 @@ input, select, textarea {
 		padding: 0;
 		text-decoration: none;
 		width: 100%;
+		transition: border-bottom-color 0.3s ease, box-shadow 0.2s ease; /* Added box-shadow for focus, preserved existing focus logic */
 	}
 
 		input[type="text"]:invalid,
@@ -2278,11 +2293,13 @@ input, select, textarea {
 		height: 3em;
 		padding-right: 3em;
 		text-overflow: ellipsis;
+		/* SVG fill color is hardcoded, transition won't apply to it directly. Background-image itself will swap. */
 	}
 
 		select option {
 			background: var(--color-bg); /* Changed from #ffffff */
 			color: var(--color-text); /* Added for better dark mode compatibility */
+			transition: background-color 0.3s ease, color 0.3s ease; /* May not be supported by all browsers */
 		}
 
 		select:focus::-ms-value {
@@ -2330,6 +2347,7 @@ input, select, textarea {
 			padding-left: 2.55em;
 			padding-right: 0.75em;
 			position: relative;
+			/* Color transition inherited from body or parent */
 		}
 
 			input[type="checkbox"] + label:before,
@@ -2360,6 +2378,7 @@ input, select, textarea {
 				text-align: center;
 				top: 0;
 				width: 2.25em;
+				transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease, box-shadow 0.2s ease;
 			}
 
 		input[type="checkbox"]:checked + label:before,
@@ -2391,6 +2410,7 @@ input, select, textarea {
 		border: solid 1px var(--color-border);
 		margin-bottom: 2em;
 		padding: 1.5em;
+		transition: border-color 0.3s ease;
 	}
 
 		.box > :last-child,
@@ -2483,6 +2503,7 @@ input, select, textarea {
 			border: solid 1px var(--color-border);
 			border-left: 0;
 			border-right: 0;
+			transition: background-color 0.3s ease, border-color 0.3s ease;
 		}
 
 			table tbody tr:nth-child(2n + 1) {
@@ -2502,10 +2523,12 @@ input, select, textarea {
 
 		table thead {
 			border-bottom: solid 2px var(--color-border);
+			transition: border-bottom-color 0.3s ease;
 		}
 
 		table tfoot {
 			border-top: solid 2px var(--color-border);
+			transition: border-top-color 0.3s ease;
 		}
 
 		table.alt {
@@ -2669,7 +2692,7 @@ input, select, textarea {
 		-webkit-flex-wrap: wrap;
 		-ms-flex-wrap: wrap;
 		flex-wrap: wrap;
-		postiion: relative;
+		position: relative;
 		margin: -2.5em 0 0 -2.5em;
 	}
 
@@ -2718,7 +2741,7 @@ input, select, textarea {
 					opacity: var(--opacity-tile-overlay-default);
 				}
 
-				.tiles article > .image:after {
+				/* .tiles article > .image:after {
 					pointer-events: none;
 					-moz-transition: opacity 0.5s ease;
 					-webkit-transition: opacity 0.5s ease;
@@ -2737,7 +2760,7 @@ input, select, textarea {
 					background-size: 100% 100%;
 					opacity: 0.25;
 					z-index: 2;
-				}
+				} */
 
 			.tiles article > a {
 				display: -moz-flex;
@@ -2926,7 +2949,7 @@ input, select, textarea {
 /* Header */
 
 	#header {
-		padding: 8em 0 0.1em 0 ;
+		padding: 2.5em 0 0.1em 0 ;
 	}
 
 		#header .logo {
@@ -2938,7 +2961,6 @@ input, select, textarea {
 			margin: 0 0 2.5em 0;
 			text-decoration: none;
 			text-transform: uppercase;
-			display: inline-block;
 		}
 
 			#header .logo > * {
@@ -2995,6 +3017,7 @@ input, select, textarea {
 						font-weight: 900;
 						letter-spacing: 0.35em;
 						text-transform: uppercase;
+						transition: background-color 0.3s ease, color 0.3s ease; /* Added for theme switch */
 					}
 
 					#header nav ul li a[href="#menu"] {
@@ -3042,10 +3065,50 @@ input, select, textarea {
 							opacity: 0;
 						}
 
+						#header nav ul li #theme-toggle {
+							display: block;
+							position: relative;
+							height: 3em;
+							width: 4em; /* Match menu button width */
+							line-height: 3em; /* For vertical centering of icon */
+							padding: 0;
+							background-color: var(--color-bg-header-nav);
+							border-radius: 4px;
+							border: none; /* Explicitly remove border */
+							box-shadow: none; /* Explicitly remove box-shadow from generic button styles */
+							font-size: 1em; /* Matches menu button font-size context */
+							color: var(--color-text); /* Icon color */
+							cursor: pointer;
+							text-align: center; /* For horizontal centering of icon */
+							outline: none; /* Remove default focus outline, or style it */
+							-webkit-tap-highlight-color: transparent;
+							transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, visibility 0.2s ease-in-out, opacity 0.2s ease-in-out, transform 0.2s ease-in-out; /* Combined transitions */
+							margin-right: 0.5em; /* Space between this and the menu button */
+							opacity: 1;
+							visibility: visible;
+							transform: translateY(0);
+						}
+
+						#header nav ul li #theme-toggle .icon {
+							font-size: 1em; /* Adjust icon size */
+							line-height: 1; /* Helps vertical alignment in flex */
+						}
+						#header nav ul li #theme-toggle:hover {
+							color: var(--color-accent);
+							background-color: transparent !important; /* Keep background transparent on hover */
+						}
+
+						#header nav ul li #theme-toggle.is-hidden-on-scroll {
+							opacity: 0;
+							visibility: hidden;
+							pointer-events: none; /* Prevent interaction when hidden */
+						}
+
+
 		@media screen and (max-width: 736px) {
 
 			#header {
-				padding: 4em 0 0.1em 0 ;
+				padding: 1em 0 0.1em 0 ;
 			}
 
 				#header nav {
@@ -3074,10 +3137,10 @@ input, select, textarea {
 		-webkit-transform: translateX(22em);
 		-ms-transform: translateX(22em);
 		transform: translateX(22em);
-		-moz-transition: -moz-transform 0.45s ease, visibility 0.45s;
-		-webkit-transition: -webkit-transform 0.45s ease, visibility 0.45s;
-		-ms-transition: -ms-transform 0.45s ease, visibility 0.45s;
-		transition: transform 0.45s ease, visibility 0.45s;
+		-moz-transition: -moz-transform 0.45s ease, visibility 0.45s, background-color 0.3s ease, color 0.3s ease;
+		-webkit-transition: -webkit-transform 0.45s ease, visibility 0.45s, background-color 0.3s ease, color 0.3s ease;
+		-ms-transition: -ms-transform 0.45s ease, visibility 0.45s, background-color 0.3s ease, color 0.3s ease;
+		transition: transform 0.45s ease, visibility 0.45s, background-color 0.3s ease, color 0.3s ease;
 		position: fixed;
 		top: 0;
 		right: 0;
@@ -3117,6 +3180,7 @@ input, select, textarea {
 				#menu > .inner > ul > li {
 					padding: 0;
 					border-top: solid 1px var(--color-border-menu-item);
+					transition: border-top-color 0.3s ease;
 				}
 
 					#menu > .inner > ul > li a {
@@ -3124,7 +3188,7 @@ input, select, textarea {
 						padding: 1em 0;
 						line-height: 1.5;
 						border: 0;
-						color: inherit;
+						color: inherit; /* Color transition handled by #menu */
 					}
 
 					#menu > .inner > ul > li:first-child {
@@ -3264,6 +3328,7 @@ input, select, textarea {
 	#footer {
 		padding: 5em 0 6em 0 ;
 		background-color: var(--color-bg-alt);
+		transition: background-color 0.3s ease;
 	}
 
 		#footer > .inner {
@@ -3302,6 +3367,7 @@ input, select, textarea {
 				list-style: none;
 				font-size: 0.8em;
 				color: var(--color-text-subtle);
+				transition: color 0.3s ease;
 			}
 
 				#footer > .inner .copyright a {
@@ -3314,6 +3380,7 @@ input, select, textarea {
 					line-height: 1;
 					padding: 0 0 0 1em;
 					margin: 0 0 0 1em;
+					transition: border-left-color 0.3s ease;
 				}
 
 					#footer > .inner .copyright li:first-child {

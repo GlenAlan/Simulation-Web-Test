@@ -89,6 +89,94 @@
 
 			});
 
+	// Theme Toggle.
+		var $themeToggleButton = $('#theme-toggle');
+
+		if ($themeToggleButton.length) {
+			var $sunIcon = $themeToggleButton.find('.fa-sun');
+			var $moonIcon = $themeToggleButton.find('.fa-moon');
+			var prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+			var scrollThreshold = 50; // Hide when scrolled more than 50px
+
+			// Function to check scroll and toggle button visibility
+			function checkScrollAndToggleThemeButton() {
+				var scrollTop = $window.scrollTop(); // $window is already defined at the top of your main.js
+
+				if (scrollTop > scrollThreshold) {
+					// If scrolled past the threshold and button is not already hidden
+					if (!$themeToggleButton.hasClass('is-hidden-on-scroll')) {
+						$themeToggleButton.addClass('is-hidden-on-scroll');
+					}
+				} else {
+					// If scrolled to the top (or less than threshold) and button is hidden
+					if ($themeToggleButton.hasClass('is-hidden-on-scroll')) {
+						$themeToggleButton.removeClass('is-hidden-on-scroll');
+					}
+				}
+			}
+
+			// Attach the function to the scroll event, namespaced for easy removal if needed
+			$window.on('scroll.themeToggleHide', checkScrollAndToggleThemeButton);
+
+			// Call it once on page load to set the initial state
+			// (e.g., if the page loads already scrolled down)
+			checkScrollAndToggleThemeButton();
+
+			if (!$sunIcon.length || !$moonIcon.length) {
+				console.error('Theme icons not found in toggle button');
+			} else {
+				function getCurrentTheme() {
+					let theme = window.localStorage.getItem('theme');
+					if (theme) {
+						return theme;
+					}
+					return prefersDarkScheme.matches ? 'dark' : 'light';
+				}
+
+				function loadTheme(theme) {
+					$body.removeClass('light-mode dark-mode').addClass(theme + '-mode');
+
+					if (theme === 'dark') {
+						$sunIcon.hide();
+						$moonIcon.css('display', 'inline-block'); // Ensure it's inline-block
+						$themeToggleButton.attr('title', 'Switch to light mode');
+						var $moonLabel = $moonIcon.find('.label');
+						if ($moonLabel.length) $moonLabel.text('Light Mode');
+					} else {
+						$sunIcon.css('display', 'inline-block'); // Ensure it's inline-block
+						$moonIcon.hide();
+						$themeToggleButton.attr('title', 'Switch to dark mode');
+						var $sunLabel = $sunIcon.find('.label');
+						if ($sunLabel.length) $sunLabel.text('Dark Mode');
+					}
+				}
+
+				$themeToggleButton.on('click', function() {
+					let currentTheme = $body.hasClass('dark-mode') ? 'dark' : 'light';
+					let newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+					window.localStorage.setItem('theme', newTheme);
+					loadTheme(newTheme);
+				});
+
+				// Load initial theme
+				// Ensure this runs after $body is fully available and classes can be applied
+				// $window.on('load') might be too late if it affects initial rendering,
+				// but for now, this placement is fine. For critical FOUC, consider an inline script in <head>.
+				loadTheme(getCurrentTheme());
+
+				// Listen for changes in system preference (vanilla JS is fine here)
+				prefersDarkScheme.addEventListener('change', function(e) {
+					// Only switch if no user preference is stored
+					if (!window.localStorage.getItem('theme')) {
+						loadTheme(e.matches ? 'dark' : 'light');
+					}
+				});
+			}
+		} else {
+			// console.warn('Theme toggle button #theme-toggle not found.'); // Optional: for debugging
+		}
+
+
 	// Menu.
 		var $menu = $('#menu');
 

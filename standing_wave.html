@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standing Wave Simulation</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .simulation-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 620px;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .controls label {
+            min-width: 180px;
+            font-size: 0.9em;
+        }
+        .controls input[type="range"] {
+            width: 250px;
+            vertical-align: middle;
+        }
+        .controls span {
+            min-width: 130px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .controls input[type="checkbox"] {
+            vertical-align: middle;
+            margin-left: 0;
+            margin-right: 5px;
+        }
+
+        .harmonic-buttons p, .checkbox-group p {
+             margin: 10px 0 5px 0;
+        }
+
+        #waveCanvas {
+            border: 1px solid #ccc;
+            background-color: #e9e9e9;
+            width: 600px;
+            height: 300px;
+            cursor: default;
+        }
+        #waveCanvas.probe-active {
+            cursor: ew-resize;
+        }
+
+        #probePlotCanvas {
+            border: 1px solid #ccc;
+            background-color: #f0f8ff;
+            width: 400px;
+            height: 300px;
+            display: none;
+        }
+        .probe-info {
+            font-size: 0.9em;
+            color: #333;
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Standing Wave on a String</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="frequency">Driving Frequency (Hz):</label>
+            <input type="range" id="frequency" min="1" max="100" value="10" step="0.01">
+            <span id="freqValue">10.00 Hz</span>
+        </div>
+
+        <div class="control-group">
+            <label for="tension">Tension (v²):</label>
+            <input type="range" id="tension" min="100" max="2500" value="625" step="25">
+            <span id="tensionValue">v² = 625 (v ≈ 25.0)</span>
+        </div>
+
+        <div class="control-group">
+            <label for="damping">Damping Factor:</label>
+            <input type="range" id="damping" min="0.001" max="1.0" value="0.02" step="0.001">
+            <span id="dampingValue">0.020</span>
+        </div>
+
+        <div class="control-group">
+            <label for="simSpeed">Simulation Speed:</label>
+            <input type="range" id="simSpeed" min="0.01" max="1.0" value="1" step="0.01">
+            <span id="simSpeedValue">x 1.00</span>
+        </div>
+
+        <div class="checkbox-group">
+            <p>Wave Visibility:</p>
+            <div class="control-group">
+                <label for="showStandingWave">Show Standing Wave:</label>
+                <input type="checkbox" id="showStandingWave" checked>
+            </div>
+            <div class="control-group">
+                <label for="showDrivenWave">Show Driven Wave:</label>
+                <input type="checkbox" id="showDrivenWave">
+            </div>
+            <div class="control-group">
+                <label for="showReflectedWave">Show Reflected Wave:</label>
+                <input type="checkbox" id="showReflectedWave">
+            </div>
+            <hr style="margin: 10px 0;">
+             <div class="control-group">
+                <label for="showNodesAntinodes">Show Nodes/Antinodes:</label>
+                <input type="checkbox" id="showNodesAntinodes">
+            </div>
+            <div class="control-group">
+                <label for="showProbe">Enable Displacement Probe:</label>
+                <input type="checkbox" id="showProbe">
+                <span class="probe-info" id="probePositionInfo"></span>
+            </div>
+        </div>
+
+        <div class="harmonic-buttons">
+            <p>Harmonic Presets:</p>
+            <button onclick="triggerSetHarmonic(1)">n=1</button>
+            <button onclick="triggerSetHarmonic(2)">n=2</button>
+            <button onclick="triggerSetHarmonic(3)">n=3</button>
+            <button onclick="triggerSetHarmonic(4)">n=4</button>
+            <button onclick="triggerSetHarmonic(5)">n=5</button>
+            <p id="resonanceInfo"></p>
+        </div>
+    </div>
+
+    <div class="simulation-container">
+        <canvas id="waveCanvas"></canvas>
+        <canvas id="probePlotCanvas"></canvas>
+    </div>
+
+    <script>
+        const waveCanvas = document.getElementById('waveCanvas');
+        const waveCtx = waveCanvas.getContext('2d');
+        const probePlotCanvas = document.getElementById('probePlotCanvas');
+        const probePlotCtx = probePlotCanvas.getContext('2d');
+
+        const deviceScale = window.devicePixelRatio || 1;
+
+        waveCanvas.width = 600 * deviceScale;
+        waveCanvas.height = 300 * deviceScale;
+        waveCtx.scale(deviceScale, deviceScale);
+        const stringLength = waveCanvas.width / deviceScale;
+        const maxVisualAmplitudeMain = (waveCanvas.height / deviceScale) / 2.5;
+
+        probePlotCanvas.width = 400 * deviceScale;
+        probePlotCanvas.height = 300 * deviceScale;
+        probePlotCtx.scale(deviceScale, deviceScale);
+        const probePlotWidth = probePlotCanvas.width / deviceScale;
+        const probePlotHeight = probePlotCanvas.height / deviceScale;
+        let currentMaxProbeAmplitude = maxVisualAmplitudeMain / 2;
+
+        let simTime = 0;
+        let drivingFrequency = 10.00;
+
+        let waveSpeedSquared = 625;
+        let dampingFactor = 0.02;
+        let simulationSpeedFactor = 1.0;
+
+        let showStandingWave = true;
+        let showDrivenWave = false;
+        let showReflectedWave = false;
+        let showNodesAntinodes = false;
+        let currentBestN = 1;
+
+        let showProbe = false;
+        let probeXPosition = stringLength / 2;
+        let isDraggingProbe = false;
+
+        let drivenWaveProbeYHistory = [];
+        let reflectedWaveProbeYHistory = [];
+        let standingWaveProbeYHistory = [];
+        const probePlotPeriods = 2.5;
+
+        const frequencySlider = document.getElementById('frequency');
+        const freqValueSpan = document.getElementById('freqValue');
+        const tensionSlider = document.getElementById('tension');
+        const tensionValueSpan = document.getElementById('tensionValue');
+        const dampingSlider = document.getElementById('damping');
+        const dampingValueSpan = document.getElementById('dampingValue');
+        const simSpeedSlider = document.getElementById('simSpeed');
+        const simSpeedValueSpan = document.getElementById('simSpeedValue');
+
+        const showStandingWaveCheckbox = document.getElementById('showStandingWave');
+        const showDrivenWaveCheckbox = document.getElementById('showDrivenWave');
+        const showReflectedWaveCheckbox = document.getElementById('showReflectedWave');
+        const showNodesAntinodesCheckbox = document.getElementById('showNodesAntinodes');
+        const showProbeCheckbox = document.getElementById('showProbe');
+        const probePositionInfoSpan = document.getElementById('probePositionInfo');
+        const resonanceInfoP = document.getElementById('resonanceInfo');
+
+        function resetProbeHistoryAndScale() {
+            drivenWaveProbeYHistory = [];
+            reflectedWaveProbeYHistory = [];
+            standingWaveProbeYHistory = [];
+            const L_meters = 1; const v_mps = updateWaveSpeed();
+            const A_eff_estimate = calculateEffectiveAmplitude(drivingFrequency, L_meters, v_mps, maxVisualAmplitudeMain);
+            currentMaxProbeAmplitude = Math.max(1, A_eff_estimate / 2);
+        }
+
+        function updateWaveSpeed() {
+            return Math.sqrt(waveSpeedSquared);
+        }
+
+        function getResonantFrequencies(L, v, numHarmonics = 10) {
+            const freqs = [];
+            for (let n = 1; n <= numHarmonics; n++) {
+                freqs.push({ n: n, freq: (n * v) / (2 * L) });
+            }
+            return freqs;
+        }
+
+        function calculateEffectiveAmplitude(f_drive, L_meters, v_mps, baseMaxAmp) {
+            const resonantFreqs = getResonantFrequencies(L_meters, v_mps);
+            let closestHarmonicN = 1;
+            let minDiff = Infinity;
+            const resonanceWidthFactor = Math.max(0.5, v_mps / 50);
+
+            for (const res of resonantFreqs) {
+                const f_n = res.freq;
+                const diff = Math.abs(f_drive - f_n);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestHarmonicN = res.n;
+                }
+            }
+            currentBestN = closestHarmonicN;
+
+            let dominantStrength = 0;
+            const f_closest = (closestHarmonicN * v_mps) / (2 * L_meters);
+            dominantStrength = 1 / (1 + Math.pow( (f_drive - f_closest) / (resonanceWidthFactor + dampingFactor * 50) , 2));
+            let effectiveAmp = baseMaxAmp * dominantStrength;
+
+            if (dominantStrength > 0.5) {
+                resonanceInfoP.textContent = `Near Harmonic n=${closestHarmonicN} (f=${f_closest.toFixed(2)} Hz). Strength: ${(dominantStrength*100).toFixed(0)}%`;
+            } else {
+                resonanceInfoP.textContent = "Not strongly resonating.";
+            }
+            return effectiveAmp;
+        }
+
+        function drawSingleWaveOnContext(ctx, wavePoints, color, lineWidth = 2) {
+            if (wavePoints.length < 2) return;
+            ctx.beginPath();
+            ctx.moveTo(wavePoints[0].x, wavePoints[0].y);
+            for (let i = 1; i < wavePoints.length; i++) {
+                ctx.lineTo(wavePoints[i].x, wavePoints[i].y);
+            }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth * deviceScale;
+            ctx.stroke();
+        }
+
+        function drawWave() {
+            waveCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+
+            const L_pixels = stringLength;
+            const L_meters = 1;
+            const v_mps = updateWaveSpeed();
+            const currentFreq = drivingFrequency;
+            const omega = 2 * Math.PI * currentFreq;
+
+            const A_eff = calculateEffectiveAmplitude(currentFreq, L_meters, v_mps, maxVisualAmplitudeMain); // This is amplitude of standing wave envelope (2A)
+            const A_comp = A_eff / 2; // Amplitude of component waves (A)
+            const k_spatial = (currentBestN * Math.PI) / L_pixels;
+
+            const numSegments = 200;
+            const standingWavePoints = [];
+            const drivenWavePoints = [];
+            const reflectedWavePoints = [];
+            const y_center_main = waveCanvas.height / (2 * deviceScale);
+
+            // Data for probe plot (always calculated if probe is active)
+            if (showProbe) {
+                const y_driven_at_probe = A_comp * Math.sin(k_spatial * probeXPosition - omega * simTime);
+                const y_reflected_at_probe = A_comp * Math.sin(k_spatial * probeXPosition + omega * simTime);
+                const y_standing_at_probe = y_driven_at_probe + y_reflected_at_probe; // Or A_eff * Math.sin(k_spatial * probeXPosition) * Math.cos(omega * simTime)
+
+                const maxCurrentDisplacement = Math.max(Math.abs(y_driven_at_probe), Math.abs(y_reflected_at_probe), Math.abs(y_standing_at_probe));
+                if (maxCurrentDisplacement > currentMaxProbeAmplitude * 0.9 && currentMaxProbeAmplitude > 0) { // Avoid division by zero if amp is 0
+                    currentMaxProbeAmplitude = maxCurrentDisplacement * 1.2;
+                } else if (currentMaxProbeAmplitude === 0 && maxCurrentDisplacement > 0) {
+                    currentMaxProbeAmplitude = maxCurrentDisplacement * 1.2;
+                }
+
+
+                drivenWaveProbeYHistory.push({ simTime: simTime, value: y_driven_at_probe });
+                reflectedWaveProbeYHistory.push({ simTime: simTime, value: y_reflected_at_probe });
+                standingWaveProbeYHistory.push({ simTime: simTime, value: y_standing_at_probe });
+
+                const period = 1.0 / drivingFrequency;
+                const historyDuration = probePlotPeriods * period;
+                const oldestSimTimeAllowed = simTime - historyDuration;
+
+                while(drivenWaveProbeYHistory.length > 0 && drivenWaveProbeYHistory[0].simTime < oldestSimTimeAllowed) drivenWaveProbeYHistory.shift();
+                while(reflectedWaveProbeYHistory.length > 0 && reflectedWaveProbeYHistory[0].simTime < oldestSimTimeAllowed) reflectedWaveProbeYHistory.shift();
+                while(standingWaveProbeYHistory.length > 0 && standingWaveProbeYHistory[0].simTime < oldestSimTimeAllowed) standingWaveProbeYHistory.shift();
+            }
+
+            // Calculate points for drawing on main canvas if respective wave is shown
+            for (let i = 0; i <= numSegments; i++) {
+                const x_pixel = (i / numSegments) * L_pixels;
+
+                if (showStandingWave) {
+                    const spatialTerm = Math.sin(k_spatial * x_pixel);
+                    const temporalTerm = Math.cos(omega * simTime);
+                    const y_standing = A_eff * spatialTerm * temporalTerm;
+                    standingWavePoints.push({x: x_pixel, y: y_center_main - y_standing});
+                }
+
+                if (showDrivenWave) {
+                    const driven_val = A_comp * Math.sin(k_spatial * x_pixel - omega * simTime);
+                    drivenWavePoints.push({x: x_pixel, y: y_center_main - driven_val});
+                }
+
+                if (showReflectedWave) {
+                    const reflected_val = A_comp * Math.sin(k_spatial * x_pixel + omega * simTime);
+                    reflectedWavePoints.push({x: x_pixel, y: y_center_main - reflected_val});
+                }
+            }
+
+            // Draw waves on main canvas
+            if (showDrivenWave) {
+                drawSingleWaveOnContext(waveCtx, drivenWavePoints, 'rgba(0, 128, 0, 0.7)', 1.5);
+                waveCtx.fillStyle = 'green'; waveCtx.font = `${12 * deviceScale}px Arial`;
+                waveCtx.fillText("Driven", 10, y_center_main - maxVisualAmplitudeMain * 0.8 - 10);
+            }
+            if (showReflectedWave) {
+                drawSingleWaveOnContext(waveCtx, reflectedWavePoints, 'rgba(255, 0, 0, 0.7)', 1.5);
+                waveCtx.fillStyle = 'red'; waveCtx.font = `${12 * deviceScale}px Arial`;
+                waveCtx.fillText("Reflected", 10, y_center_main + maxVisualAmplitudeMain * 0.8 + 20);
+            }
+            if (showStandingWave) {
+                drawSingleWaveOnContext(waveCtx, standingWavePoints, 'blue', 2);
+            }
+
+
+            waveCtx.fillStyle = 'black';
+            waveCtx.beginPath(); waveCtx.arc(0, y_center_main, 5 , 0, 2 * Math.PI); waveCtx.fill();
+            waveCtx.beginPath(); waveCtx.arc(L_pixels, y_center_main, 5, 0, 2 * Math.PI); waveCtx.fill();
+
+            if (showNodesAntinodes && A_eff > 5) {
+                waveCtx.font = `${14 * deviceScale}px Arial`;
+                const segmentLength = L_pixels / currentBestN;
+                waveCtx.fillStyle = 'purple';
+                for (let m = 0; m <= currentBestN; m++) {
+                    const x_node = m * segmentLength;
+                    waveCtx.beginPath(); waveCtx.arc(x_node, y_center_main, 4, 0, 2 * Math.PI); waveCtx.fill();
+                    waveCtx.fillText("N", x_node - 5, y_center_main - 10);
+                }
+                waveCtx.fillStyle = 'orange';
+                for (let m = 0; m < currentBestN; m++) {
+                    const x_antinode = (m + 0.5) * segmentLength;
+                    waveCtx.beginPath(); waveCtx.arc(x_antinode, y_center_main, 4 , 0, 2 * Math.PI); waveCtx.fill();
+                    waveCtx.fillText("A", x_antinode - 5, y_center_main + 20);
+                }
+            }
+
+            if (showProbe) {
+                waveCtx.beginPath(); waveCtx.moveTo(probeXPosition, 0);
+                waveCtx.lineTo(probeXPosition, waveCanvas.height / deviceScale);
+                waveCtx.strokeStyle = 'rgba(128, 0, 128, 0.8)'; waveCtx.lineWidth = 2 * deviceScale; waveCtx.stroke();
+                probePositionInfoSpan.textContent = `Probe at x = ${probeXPosition.toFixed(0)} px`;
+            } else {
+                probePositionInfoSpan.textContent = "";
+            }
+        }
+
+        function drawProbePlot() {
+            probePlotCtx.clearRect(0, 0, probePlotCanvas.width, probePlotCanvas.height);
+
+            let canDrawPlot = false;
+            if (showProbe) {
+                if (showStandingWave && standingWaveProbeYHistory.length >= 2) canDrawPlot = true;
+                if (showDrivenWave && drivenWaveProbeYHistory.length >= 2) canDrawPlot = true;
+                if (showReflectedWave && reflectedWaveProbeYHistory.length >= 2) canDrawPlot = true;
+            }
+            if (!canDrawPlot) return;
+
+
+            const y_center_probe_plot = probePlotHeight / 2;
+            // Ensure currentMaxProbeAmplitude is not zero to avoid division by zero or Infinity scale
+            const effectiveMaxProbeAmplitude = Math.max(1, currentMaxProbeAmplitude); // Use at least 1 to prevent issues
+            const probe_plot_y_scale = (probePlotHeight / 2) / (effectiveMaxProbeAmplitude * 1.1);
+
+
+            probePlotCtx.beginPath();
+            probePlotCtx.moveTo(0, y_center_probe_plot); probePlotCtx.lineTo(probePlotWidth, y_center_probe_plot);
+            probePlotCtx.moveTo(10, 0); probePlotCtx.lineTo(10, probePlotHeight);
+            probePlotCtx.strokeStyle = '#aaa'; probePlotCtx.lineWidth = 1 * deviceScale; probePlotCtx.stroke();
+
+            probePlotCtx.font = `${10 * deviceScale}px Arial`; probePlotCtx.fillStyle = '#555';
+            const period = 1.0 / drivingFrequency;
+            const historyDuration = probePlotPeriods * period;
+            probePlotCtx.fillText(`${historyDuration.toFixed(2)}s (${probePlotPeriods}T)`, probePlotWidth - 70, y_center_probe_plot - 5);
+            probePlotCtx.save();
+            probePlotCtx.translate(15, y_center_probe_plot - 20); probePlotCtx.rotate(-Math.PI/2);
+            probePlotCtx.fillText("Displacement", 0, 0);
+            probePlotCtx.restore();
+
+            function plotTimeHistory(historyArray, color, lineWidth = 1.5) {
+                if (historyArray.length < 2) return;
+                probePlotCtx.beginPath();
+                const startTimeOnPlot = simTime - historyDuration;
+
+                for (let i = 0; i < historyArray.length; i++) {
+                    const point = historyArray[i];
+                    const x = ((point.simTime - startTimeOnPlot) / historyDuration) * probePlotWidth;
+                    const y = y_center_probe_plot - point.value * probe_plot_y_scale;
+
+                    if (x >= 0 && x <= probePlotWidth) {
+                         if (i === 0 || ((historyArray[i-1].simTime - startTimeOnPlot < 0) && (point.simTime - startTimeOnPlot >=0)) ) {
+                            probePlotCtx.moveTo(x, y);
+                        } else {
+                            probePlotCtx.lineTo(x, y);
+                        }
+                    }
+                }
+                probePlotCtx.strokeStyle = color; probePlotCtx.lineWidth = lineWidth * deviceScale; probePlotCtx.stroke();
+            }
+
+            let legendYOffset = 20;
+            const legendSpacing = 15;
+
+            if (showDrivenWave) {
+                plotTimeHistory(drivenWaveProbeYHistory, 'green');
+                probePlotCtx.fillStyle = 'green'; probePlotCtx.fillText("Driven", probePlotWidth - 60, legendYOffset);
+                legendYOffset += legendSpacing;
+            }
+            if (showReflectedWave) {
+                plotTimeHistory(reflectedWaveProbeYHistory, 'red');
+                probePlotCtx.fillStyle = 'red'; probePlotCtx.fillText("Reflected", probePlotWidth - 60, legendYOffset);
+                legendYOffset += legendSpacing;
+            }
+            if (showStandingWave) {
+                plotTimeHistory(standingWaveProbeYHistory, 'blue');
+                probePlotCtx.fillStyle = 'blue'; probePlotCtx.fillText("Standing", probePlotWidth - 60, legendYOffset);
+            }
+        }
+
+        let lastFrameTime = performance.now();
+        function animate(currentTime) {
+            const deltaTime = (currentTime - lastFrameTime) / 10000; // Sim time delta
+            lastFrameTime = currentTime;
+
+            simTime += deltaTime * simulationSpeedFactor;
+
+            drawWave();
+            if (showProbe) {
+                drawProbePlot();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        frequencySlider.addEventListener('input', (e) => {
+            drivingFrequency = parseFloat(e.target.value);
+            freqValueSpan.textContent = `${drivingFrequency.toFixed(2)} Hz`;
+            resetProbeHistoryAndScale();
+        });
+
+        tensionSlider.addEventListener('input', (e) => {
+            waveSpeedSquared = parseFloat(e.target.value);
+            tensionValueSpan.textContent = `v² = ${waveSpeedSquared} (v ≈ ${Math.sqrt(waveSpeedSquared).toFixed(1)})`;
+            const L_m = 1; const v_m = updateWaveSpeed();
+            const f_max_harmonic = (8 * v_m) / (2 * L_m);
+            const newMaxFreq = Math.max(100, Math.ceil(f_max_harmonic / 10) * 10 + 20);
+            if (parseFloat(frequencySlider.max) < newMaxFreq || newMaxFreq < parseFloat(frequencySlider.max) - 50) {
+                frequencySlider.max = newMaxFreq;
+            }
+            if (drivingFrequency > newMaxFreq) {
+                 drivingFrequency = newMaxFreq; frequencySlider.value = drivingFrequency;
+                 freqValueSpan.textContent = `${drivingFrequency.toFixed(2)} Hz`;
+            }
+            resetProbeHistoryAndScale();
+        });
+
+        dampingSlider.addEventListener('input', (e) => {
+            dampingFactor = parseFloat(e.target.value);
+            dampingValueSpan.textContent = dampingFactor.toFixed(3);
+            resetProbeHistoryAndScale();
+        });
+
+        simSpeedSlider.addEventListener('input', (e) => {
+            simulationSpeedFactor = parseFloat(e.target.value);
+            simSpeedValueSpan.textContent = `x ${simulationSpeedFactor.toFixed(2)}`;
+        });
+
+        showStandingWaveCheckbox.addEventListener('change', (e) => {
+            showStandingWave = e.target.checked;
+        });
+        showDrivenWaveCheckbox.addEventListener('change', (e) => {
+            showDrivenWave = e.target.checked;
+        });
+        showReflectedWaveCheckbox.addEventListener('change', (e) => {
+            showReflectedWave = e.target.checked;
+        });
+
+        showNodesAntinodesCheckbox.addEventListener('change', (e) => {
+            showNodesAntinodes = e.target.checked;
+        });
+
+        showProbeCheckbox.addEventListener('change', (e) => {
+            showProbe = e.target.checked;
+            waveCanvas.classList.toggle('probe-active', showProbe);
+            probePlotCanvas.style.display = showProbe ? 'block' : 'none';
+            if (!showProbe) {
+                probePositionInfoSpan.textContent = "";
+            }
+            resetProbeHistoryAndScale();
+        });
+
+        waveCanvas.addEventListener('mousedown', (e) => {
+            if (showProbe) {
+                isDraggingProbe = true;
+                const rect = waveCanvas.getBoundingClientRect();
+                probeXPosition = Math.max(0, Math.min(stringLength, (e.clientX - rect.left)));
+                resetProbeHistoryAndScale();
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (showProbe && isDraggingProbe) {
+                const rect = waveCanvas.getBoundingClientRect();
+                probeXPosition = Math.max(0, Math.min(stringLength, (e.clientX - rect.left)));
+            }
+        });
+        document.addEventListener('mouseup', () => {
+            if (isDraggingProbe) { isDraggingProbe = false; }
+        });
+
+        window.triggerSetHarmonic = (n) => {
+            const L_meters = 1; const v_mps = updateWaveSpeed();
+            const targetFreq = (n * v_mps) / (2 * L_meters);
+            const currentMax = parseFloat(frequencySlider.max);
+            if (targetFreq > currentMax) frequencySlider.max = Math.ceil(targetFreq / 10) * 10 + 20;
+            const currentMin = parseFloat(frequencySlider.min);
+            if (targetFreq < currentMin) frequencySlider.min = Math.max(1, Math.floor(targetFreq / 10) * 10);
+
+            drivingFrequency = targetFreq;
+            frequencySlider.value = drivingFrequency;
+            freqValueSpan.textContent = `${drivingFrequency.toFixed(2)} Hz`;
+            resetProbeHistoryAndScale();
+        };
+
+        function initialize() {
+            freqValueSpan.textContent = `${drivingFrequency.toFixed(2)} Hz`;
+            frequencySlider.value = drivingFrequency;
+            tensionValueSpan.textContent = `v² = ${waveSpeedSquared} (v ≈ ${Math.sqrt(waveSpeedSquared).toFixed(1)})`;
+            tensionSlider.value = waveSpeedSquared;
+            dampingValueSpan.textContent = dampingFactor.toFixed(3);
+            dampingSlider.value = dampingFactor;
+            simSpeedValueSpan.textContent = `x ${simulationSpeedFactor.toFixed(2)}`;
+            simSpeedSlider.value = simulationSpeedFactor;
+
+            showStandingWaveCheckbox.checked = showStandingWave;
+            showDrivenWaveCheckbox.checked = showDrivenWave;
+            showReflectedWaveCheckbox.checked = showReflectedWave;
+            showNodesAntinodesCheckbox.checked = showNodesAntinodes;
+            showProbeCheckbox.checked = showProbe;
+
+            waveCanvas.classList.toggle('probe-active', showProbe);
+            probePlotCanvas.style.display = showProbe ? 'block' : 'none';
+
+            const initial_v = updateWaveSpeed(); const L_meters_init = 1;
+            const f5_initial = (5 * initial_v) / (2 * L_meters_init);
+            const initialMaxFreq = Math.max(100, Math.ceil(f5_initial / 10) * 10 + 20);
+            frequencySlider.max = initialMaxFreq;
+            if (drivingFrequency > initialMaxFreq) {
+                drivingFrequency = initialMaxFreq; frequencySlider.value = drivingFrequency;
+                freqValueSpan.textContent = `${drivingFrequency.toFixed(2)} Hz`;
+            }
+
+            resetProbeHistoryAndScale();
+            lastFrameTime = performance.now();
+            requestAnimationFrame(animate);
+        }
+        initialize();
+    </script>
+</body>
+</html>

@@ -3116,9 +3116,21 @@ input, select, textarea {
 					top: 0.5em;
 				}
 
-					#header nav ul li a[href="#menu"]:before, #header nav ul li a[href="#menu"]:after {
-						background-size: 1.5em 1.5em;
-					}
+				/* Added rules for mobile layout of nav buttons */
+				#header nav ul {
+					flex-direction: column-reverse; /* Stack items, menu on top, theme toggle below */
+					align-items: flex-end; /* Align items to the right edge of the nav container */
+				}
+
+				#header nav ul li #theme-toggle {
+					margin-right: 0; /* Remove horizontal margin used in desktop row layout */
+					margin-top: 0.5em; /* Add space above the theme toggle (below the menu button) */
+				}
+				/* End of added rules */
+
+				#header nav ul li a[href="#menu"]:before, #header nav ul li a[href="#menu"]:after {
+					background-size: 1.5em 1.5em;
+				}
 
 		}
 

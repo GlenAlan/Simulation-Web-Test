@@ -41,7 +41,7 @@
 }
 
 /* Dark Mode Styles - Applied when body has 'dark-mode' class */
-body.dark-mode {
+html.dark-mode {
   /* Backgrounds */
   --color-bg: #1e1e1e;
   --color-bg-alt: #2a2a2a; /* footer */
@@ -76,27 +76,27 @@ body.dark-mode {
 /* @media (prefers-color-scheme: dark) { ... } */
 
 
-/* Styles for specific elements in dark mode, applied via body.dark-mode */
-body.dark-mode select {
+/* Styles for specific elements in dark mode, applied via html.dark-mode */
+html.dark-mode select {
   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' preserveAspectRatio='none' viewBox='0 0 40 40'%3E%3Cpath d='M9.4,12.3l10.4,10.4l10.4-10.4c0.2-0.2,0.5-0.4,0.9-0.4c0.3,0,0.6,0.1,0.9,0.4l3.3,3.3c0.2,0.2,0.4,0.5,0.4,0.9 c0,0.4-0.1,0.6-0.4,0.9L20.7,31.9c-0.2,0.2-0.5,0.4-0.9,0.4c-0.3,0-0.6-0.1-0.9-0.4L4.3,17.3c-0.2-0.2-0.4-0.5-0.4-0.9 c0-0.4,0.1-0.6,0.4-0.9l3.3-3.3c0.2-0.2,0.5-0.4,0.9-0.4S9.1,12.1,9.4,12.3z' fill='%23cccccc' /%3E%3C/svg%3E"); /* Lighter arrow for dark mode */
 }
 
-body.dark-mode select option {
+html.dark-mode select option {
 	background: var(--color-bg-alt); /* Dark background for options */
 	color: var(--color-text);
 }
 
-body.dark-mode #header nav ul li a[href="#menu"]:before { /* Hover state icon */
+html.dark-mode #header nav ul li a[href="#menu"]:before { /* Hover state icon */
   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23f2849e%3B /* var(--color-accent) */ %7D%3C/style%3E%3Cline x1='0' y1='25' x2='100' y2='25' /%3E%3Cline x1='0' y1='50' x2='100' y2='50' /%3E%3Cline x1='0' y1='75' x2='100' y2='75' /%3E%3C/svg%3E");
 }
-body.dark-mode #header nav ul li a[href="#menu"]:after { /* Default state icon */
+html.dark-mode #header nav ul li a[href="#menu"]:after { /* Default state icon */
   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23e0e0e0%3B /* var(--color-text) */ %7D%3C/style%3E%3Cline x1='0' y1='25' x2='100' y2='25' /%3E%3Cline x1='0' y1='50' x2='100' y2='50' /%3E%3Cline x1='0' y1='75' x2='100' y2='75' /%3E%3C/svg%3E");
 }
 
-body.dark-mode #menu > .close:before { /* Hover state icon */
+html.dark-mode #menu > .close:before { /* Hover state icon */
   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23f2849e%3B /* var(--color-accent) */ %7D%3C/style%3E%3Cline x1='15' y1='15' x2='85' y2='85' /%3E%3Cline x1='85' y1='15' x2='15' y2='85' /%3E%3C/svg%3E");
 }
-body.dark-mode #menu > .close:after { /* Default state icon */
+html.dark-mode #menu > .close:after { /* Default state icon */
   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cstyle%3Eline %7B stroke-width: 8px%3B stroke: %23ffffff%3B /* var(--color-text-light) */ %7D%3C/style%3E%3Cline x1='15' y1='15' x2='85' y2='85' /%3E%3Cline x1='85' y1='15' x2='15' y2='85' /%3E%3C/svg%3E");
 }
 

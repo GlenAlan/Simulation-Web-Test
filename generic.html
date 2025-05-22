@@ -9,6 +9,29 @@
 		<title>CHANGE ME</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<script>
+			(function() {
+				var theme = 'light'; // Default theme
+				try {
+					var storedTheme = localStorage.getItem('theme');
+					if (storedTheme) {
+						theme = storedTheme;
+					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+						theme = 'dark';
+					}
+				} catch (e) {
+					// Ignore errors (e.g., localStorage disabled)
+				}
+
+				if (theme === 'dark') {
+					document.documentElement.classList.add('dark-mode');
+				} else {
+					// Optional: Ensure 'dark-mode' is not present if light is determined.
+					// document.documentElement.classList.remove('dark-mode');
+					// The main.js will add 'light-mode' class later if needed.
+				}
+			})();
+		</script>
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>

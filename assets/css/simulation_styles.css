@@ -161,15 +161,23 @@ html.dark-mode .sim-panel-close-button-inside {
 
 /* Overlay for action buttons (e.g., Fullscreen, Settings Toggle). */
 .sim-action-buttons-overlay {
-    /* Position is dynamically set by JavaScript. */
-    /* right: var(--sim-button-offset); REMOVED - JS handles left/right/top */
-    z-index: 3000; /* Below panel (4000) but above most content. */
+    position: fixed; /* Changed from absolute to ensure it's relative to viewport */
+    top: calc(3.5em + var(--sim-button-offset)); /* Position below fixed header (approx 3.5em height) */
+    right: var(--sim-button-offset);
+    z-index: 10001; /* Ensure it's above the site header (typically z-index 10000) */
     display: flex;
-    flex-direction: column; /* Stacks buttons vertically - REMAINS AS REQUESTED */
-    gap: 10px; /* Spacing between buttons. */
-    transition: opacity 0.3s ease-out, visibility 0.3s ease-out; /* For smooth hide/show */
-    opacity: 1;
-    visibility: visible;
+    flex-direction: column; /* Stack buttons vertically */
+    gap: 5px; /* Space between buttons for clarity */
+}
+
+/* Adjust action buttons overlay top when in simulation fullscreen (header is hidden) */
+body.sim-fullscreen-active .sim-action-buttons-overlay {
+    top: var(--sim-button-offset); /* Position from top of viewport */
+}
+
+/* Hide action buttons when the main site menu is visible to prevent overlap/conflict */
+body.is-menu-visible .sim-action-buttons-overlay {
+    display: none !important;
 }
 
 /* Hide action buttons when the control panel is open. */

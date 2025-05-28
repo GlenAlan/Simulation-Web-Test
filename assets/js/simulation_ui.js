@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const simControlsHeader = controlsPanel ? controlsPanel.querySelector('.sim-controls-header') : null;
     let panelCloseBtnInside; // Internal close button for the panel
 
+    // Simulation size checkboxes
+    const simSizeCheckboxes = controlsPanel ? controlsPanel.querySelectorAll('input[name="simSize"]') : [];
+
     const openPanelIcon = '<span class="icon solid fa-cog"><span class="label">Open Settings</span></span>';
     const closePanelIcon = '<span class="icon solid fa-times"><span class="label">Close Settings</span></span>';
     
@@ -180,5 +183,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+    }
+
+    // Event listener for simulation size checkboxes
+    simSizeCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Uncheck other checkboxes
+            simSizeCheckboxes.forEach(cb => {
+                if (cb !== this) {
+                    cb.checked = false;
+                }
+            });
+            // Ensure at least one checkbox is checked
+            if (!this.checked) {
+                // If the user unchecks the currently active one, re-check it.
+                this.checked = true; 
+            }
+            
+            const newSize = parseInt(this.value);
+            // Assuming a global function or method to update simulation size exists
+            if (window.convectionSimulation && typeof window.convectionSimulation.setSize === 'function') {
+                window.convectionSimulation.setSize(newSize);
+                // After changing size, it's good to update positions and potentially canvas resolution
+                updatePositions(); // This might trigger canvas resize via observers
+            } else {
+                console.warn('window.convectionSimulation.setSize() function not found.');
+            }
+        });
+    });
+
+    // Set initial state for simSizeCheckboxes based on HTML 'checked' attribute
+    let isAnyCheckboxChecked = false;
+    simSizeCheckboxes.forEach(cb => {
+        if (cb.checked) {
+            isAnyCheckboxChecked = true;
+            // Optionally, trigger the setSize for the initially checked one,
+            // if not already handled by convection_core.js on load.
+            // const initialSize = parseInt(cb.value);
+            // if (window.convectionSimulation && typeof window.convectionSimulation.setSize === 'function') {
+            //     window.convectionSimulation.setSize(initialSize);
+            // }
+        }
+    });
+
+    // If no checkbox is checked by default in HTML (e.g. due to an edit error), check the first one.
+    if (!isAnyCheckboxChecked && simSizeCheckboxes.length > 0) {
+        simSizeCheckboxes[0].checked = true;
+        // Optionally, trigger setSize for this default.
+        // const defaultSize = parseInt(simSizeCheckboxes[0].value);
+        // if (window.convectionSimulation && typeof window.convectionSimulation.setSize === 'function') {
+        //     window.convectionSimulation.setSize(defaultSize);
+        // }
     }
 });

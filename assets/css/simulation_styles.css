@@ -20,7 +20,7 @@ html {
 /* Controls Panel: Right-side overlay sidebar for simulation settings. */
 .sim-controls-panel {
     background-color: var(--color-bg-alt);
-    border-left: 1px solid var(--color-border); /* Visible border on the panel's inner edge. */
+    border-left: 1px solid var(--color-border); /* Visible border on the panel\'s inner edge. */
     padding: 1.5em;
     overflow-y: auto; /* Allows scrolling for content taller than the panel. */
     z-index: 4000; /* Ensures panel overlays other page content. */
@@ -33,7 +33,32 @@ html {
     width: var(--sim-panel-width);
     transform: translateX(100%); /* Initially off-screen to the right. */
     transition: transform 0.3s ease-out; /* Smooth slide-in/out animation. */
+
+    /* Themed scrollbar for Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) var(--color-bg-alt);
 }
+
+/* Themed scrollbar for WebKit browsers (Chrome, Safari, Edge) */
+.sim-controls-panel::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+}
+
+.sim-controls-panel::-webkit-scrollbar-track {
+    background: var(--color-bg-alt); /* Background of the scrollbar track */
+    border-radius: 4px;
+}
+
+.sim-controls-panel::-webkit-scrollbar-thumb {
+    background-color: var(--color-accent); /* Color of the scrollbar thumb */
+    border-radius: 4px; /* Roundness of the scrollbar thumb */
+    border: 2px solid var(--color-bg-alt); /* Creates padding around thumb */
+}
+
+.sim-controls-panel::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-accent-active); /* Darker color on hover */
+}
+
 .sim-controls-panel.panel-open {
     transform: translateX(0); /* Slides panel into view. */
 }
@@ -94,7 +119,7 @@ html.dark-mode .sim-panel-close-button-inside {
 .sim-controls-content {
     display: flex;
     flex-direction: column;
-    gap: 1em; /* Spacing between control elements. */
+    gap: 0.5em; /* Spacing between control elements. Reduced from 1em */
 }
 .sim-controls-content label {
     display: block;
@@ -123,6 +148,75 @@ html.dark-mode .sim-panel-close-button-inside {
     width: 18px; height: 18px; background: var(--color-accent); /* Styles for the slider thumb (Firefox). */
     border-radius: 50%; cursor: pointer; border: 2px solid var(--color-bg-alt);
 }
+
+/* Styling for control groups and checkbox groups */
+.sim-control-group {
+    margin-top: 0.5em; /* Further reduced from 0.5em */
+    padding-top: 0.5em; /* Further reduced from 0.5em */
+    border-top: 1px solid var(--color-border);
+}
+
+.sim-control-group-label {
+    display: block;
+    font-size: 0.9em;
+    color: var(--color-text);
+    margin-bottom: 0.5em; /* Adjusted from 0.5em to provide space for button-like labels */
+    font-weight: bold;
+}
+
+.sim-checkbox-group {
+    display: flex;
+    flex-direction: column; /* Stack checkboxes vertically */
+    gap: 0.5em; /* Reduced gap from 0.75em for tighter spacing */
+}
+
+/* Hide the actual checkbox input */
+.sim-checkbox-group input[type="checkbox"] {
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Style the label to look like a button */
+.sim-checkbox-group label {
+    display: block; /* Make label take full width in its column */
+    padding: 0.45em 0.8em; /* Reduced padding from 0.65em 1em for smaller buttons */
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: var(--color-bg); /* Default background */
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    text-align: center;
+    font-size: 0.85em; /* Slightly smaller font for button text */
+    line-height: 1.5;
+}
+
+/* Hover state for the label "button" */
+.sim-checkbox-group label:hover {
+    border-color: var(--color-accent);
+    background-color: var(--color-bg-subtle); /* Subtle background change on hover */
+}
+
+/* Styles for when the checkbox is checked (selected button) */
+.sim-checkbox-group input[type="checkbox"]:checked + label {
+    background-color: var(--color-accent);
+    color: var(--color-text-light); /* Light text on accent background */
+    border-color: var(--color-accent-active); /* Or var(--color-accent) */
+}
+
+/* Focus-visible styling for keyboard navigation accessibility */
+.sim-checkbox-group input[type="checkbox"]:focus-visible + label {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
 
 /* Main content area holding the canvas and description. */
 .simulation-main-content {
@@ -415,13 +509,6 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) { /* Styles for 'medium' screens (e.g., tablets) and smaller. */
-    .sim-action-buttons-overlay {
-        /* On small screens, when panel is closed and not fullscreen: */
-        /* JS now handles top and right positioning to place it inside the canvas area. */
-        /* left: 50%; REMOVED - No longer centered */
-        /* transform: translateX(-50%); REMOVED - No longer centered */
-        /* right: auto; REMOVED - JS sets right */
-    }
 
     body.sim-fullscreen-active .sim-action-buttons-overlay {
         /* In fullscreen on small screens, JS handles fixed positioning to top right via --sim-button-offset */

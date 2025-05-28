@@ -1,7 +1,7 @@
 // GRID & PHYSICS PARAMETERS
-const N    = 64,
-      size = N + 2,
-      iter = 4;
+let N    = 64; // Made N mutable
+let size = N + 2;
+const iter = 4;
 const diff   = 0.0001,
       visc   = 0.0001,
       buoyancyCoeff = 1.0,
@@ -20,15 +20,15 @@ let lastFpsUpdate = 0;
 let currentFps = 0;
 
 // FLUID STATE ARRAYS
-let u        = new Float32Array(size*size),
-    v        = new Float32Array(size*size),
-    u_prev   = new Float32Array(size*size),
-    v_prev   = new Float32Array(size*size),
-    dens     = new Float32Array(size*size),
-    dens_prev= new Float32Array(size*size);
-const u0    = new Float32Array(size*size),
-      v0    = new Float32Array(size*size),
-      dens0 = new Float32Array(size*size);
+let u        = new Float32Array(size*size);
+let v        = new Float32Array(size*size);
+let u_prev   = new Float32Array(size*size);
+let v_prev   = new Float32Array(size*size);
+let dens     = new Float32Array(size*size);
+let dens_prev= new Float32Array(size*size);
+let u0    = new Float32Array(size*size); // Made u0, v0, dens0 mutable for resize
+let v0    = new Float32Array(size*size);
+let dens0 = new Float32Array(size*size);
 for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
 let avg_density = ambientTemp;
 let prev_avg_density = ambientTemp;
@@ -461,3 +461,46 @@ if (document.readyState === "complete" || (document.readyState !== "loading" && 
 } else {
     document.addEventListener("DOMContentLoaded", () => setTimeout(startSimulationWhenReady, 50));
 }
+
+function reinitializeArrays(newN) {
+    N = newN;
+    size = N + 2;
+
+    u        = new Float32Array(size*size);
+    v        = new Float32Array(size*size);
+    u_prev   = new Float32Array(size*size);
+    v_prev   = new Float32Array(size*size);
+    dens     = new Float32Array(size*size);
+    dens_prev= new Float32Array(size*size);
+    u0       = new Float32Array(size*size);
+    v0       = new Float32Array(size*size);
+    dens0    = new Float32Array(size*size);
+
+    for (let i = 0; i < dens.length; i++) dens[i] = ambientTemp;
+    avg_density = ambientTemp;
+    prev_avg_density = ambientTemp;
+
+    // Reset any other necessary simulation state related to grid size
+    if (offscreenCanvas) {
+        offscreenCanvas.width = N;
+        offscreenCanvas.height = N;
+        if (offscreenCtx) offscreenImageData = offscreenCtx.createImageData(N, N);
+    }
+    // Potentially reset mouse interaction states if they depend on cell size
+    mX = 0; mY = 0; 
+
+    // It might be good to call updateCanvasResolution here too, 
+    // or ensure it's called after setSize completes.
+    // For now, simulation_ui.js calls updatePositions which should trigger it.
+}
+
+// Expose setSize to be called from simulation_ui.js
+window.convectionSimulation = {
+    setSize: function(newSize) {
+        console.log(`Convection_core: Setting simulation size to ${newSize}x${newSize}`);
+        reinitializeArrays(newSize);
+        // Potentially trigger a redraw or reset of the simulation loop if needed
+        // For now, the existing loop should pick up the new N value.
+        // A full reset might involve cancelling the current animation frame and restarting.
+    }
+};

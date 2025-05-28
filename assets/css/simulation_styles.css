@@ -1,44 +1,46 @@
 /* --- Simulation Page Specific Styles --- */
 
-/* Overall wrapper for the simulation section */
+/* Main container for the simulation interface. */
 .simulation-area-wrapper {
-    position: relative; /* For positioning the overlay panel */
-    box-sizing: border-box; /* Added for robustness */
+    position: relative; /* Establishes a positioning context for child elements like overlays. */
+    box-sizing: border-box; /* Ensures padding/border are included in the element's total width and height. */
 }
 
-/* Define panel width and other global sim variables */
+/* Global CSS variables for the simulation interface. */
 :root {
-    --sim-panel-width: 280px; /* Adjust based on your panel's content */
-    --sim-button-offset: 0px; /* MODIFIED: Buttons right on the edge */
+    --sim-panel-width: 280px; /* Default width for the simulation control panel. */
+    --sim-button-offset: 5px; /* Consistent offset for buttons. Changed from 10px to 5px */
 }
 
-/* Ensure container for absolute positioning of buttons is set (if you choose absolute later) */
-.simulation-display-container {
-    position: relative; /* For .sim-action-buttons-overlay if it were absolute */
-    /* ... existing styles ... */
+/* Prevent horizontal scrollbar on the page if content slightly overflows. */
+html {
+    overflow-x: hidden;
 }
 
-/* Controls Panel (Right Overlay Sidebar) */
+/* Controls Panel: Right-side overlay sidebar for simulation settings. */
 .sim-controls-panel {
     background-color: var(--color-bg-alt);
-    border-left: 1px solid var(--color-border); /* Border on the visible edge */
+    border-left: 1px solid var(--color-border); /* Visible border on the panel's inner edge. */
     padding: 1.5em;
-    overflow-y: auto;
-    z-index: 4000; /* High z-index to overlay content */
-    box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+    overflow-y: auto; /* Allows scrolling for content taller than the panel. */
+    z-index: 4000; /* Ensures panel overlays other page content. */
+    box-shadow: -2px 0 10px rgba(0,0,0,0.2); /* Shadow for visual depth. */
     
-    position: fixed;
+    position: fixed; /* Fixed position relative to the viewport. */
     right: 0;
-    top: 0; /* JS will adjust based on header for non-fullscreen */
-    height: 100vh; /* JS will adjust based on header for non-fullscreen */
+    top: 0;        /* Default; JS may adjust based on header height in non-fullscreen mode. */
+    height: 100vh; /* Default; JS may adjust based on header height in non-fullscreen mode. */
     width: var(--sim-panel-width);
-    transform: translateX(100%); /* Start off-screen to the right */
-    transition: transform 0.3s ease-out;
+    transform: translateX(100%); /* Initially off-screen to the right. */
+    transition: transform 0.3s ease-out; /* Smooth slide-in/out animation. */
 }
 .sim-controls-panel.panel-open {
-    transform: translateX(0); /* Slide in */
+    transform: translateX(0); /* Slides panel into view. */
 }
 .sim-controls-header {
+    display: flex; /* Enable flexbox for alignment */
+    justify-content: space-between; /* Pushes title and button to opposite ends */
+    align-items: center; /* Vertically aligns items */
     margin-bottom: 1em;
     padding-bottom: 0.5em;
     border-bottom: 1px solid var(--color-border);
@@ -50,10 +52,49 @@
     letter-spacing: 0.1em;
     color: var(--color-text);
 }
+
+/* Style for the new close button INSIDE the panel */
+.sim-panel-close-button-inside {
+    border: none !important; 
+    outline: none !important;
+    color: var(--color-text); 
+    padding: 0; 
+    border-radius: 8px; 
+    cursor: pointer;
+    line-height: 1; 
+    box-shadow: none !important; 
+    display: inline-flex; 
+    align-items: center;    
+    justify-content: center; 
+    width: 44px;  
+    height: 44px; 
+    background-color: transparent !important;
+}
+
+.sim-panel-close-button-inside .icon {
+    font-size: 1em; /* Example, adjust as needed */
+    transition: color 0.2s ease-in-out; /* Smooth color transition for icon */
+}
+
+.sim-panel-close-button-inside:hover {
+    /* Button itself should not change background or border on hover */
+    background-color: transparent !important;
+    border: none !important;
+    /* color property removed from here */
+}
+
+.sim-panel-close-button-inside:hover .icon {
+    color: var(--color-accent); /* Icon color changes on button hover */
+}
+
+html.dark-mode .sim-panel-close-button-inside {
+    color: var(--color-text-light);
+}
+
 .sim-controls-content {
     display: flex;
     flex-direction: column;
-    gap: 1em;
+    gap: 1em; /* Spacing between control elements. */
 }
 .sim-controls-content label {
     display: block;
@@ -64,143 +105,186 @@
 .sim-controls-content label span {
     color: var(--color-accent);
     font-weight: bold;
-    margin-left: 0.5em;
+    margin-left: 0.5em; /* Space for value display next to label. */
 }
 .sim-controls-content input[type="range"] {
-    -webkit-appearance: none; appearance: none; height: 8px;
+    -webkit-appearance: none; appearance: none; height: 8px; /* Custom styling for range input. */
     background: var(--color-border); border-radius: 4px;
     outline: none; opacity: 0.9; transition: opacity .15s ease-in-out;
     width: 100%; margin-top: 0.25em;
 }
 .sim-controls-content input[type="range"]:hover { opacity: 1; }
 .sim-controls-content input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+    -webkit-appearance: none; appearance: none; width: 18px; height: 18px; /* Styles for the slider thumb (WebKit/Blink). */
     background: var(--color-accent); border-radius: 50%; cursor: pointer;
     border: 2px solid var(--color-bg-alt);
 }
 .sim-controls-content input[type="range"]::-moz-range-thumb {
-    width: 18px; height: 18px; background: var(--color-accent);
+    width: 18px; height: 18px; background: var(--color-accent); /* Styles for the slider thumb (Firefox). */
     border-radius: 50%; cursor: pointer; border: 2px solid var(--color-bg-alt);
 }
 
-/* Main content area (canvas, description) */
+/* Main content area holding the canvas and description. */
 .simulation-main-content {
     width: 100%;
-    min-width: 0; /* Important for flex contexts if any parent is flex */
+    min-width: 0; /* Prevents flex items from overflowing if a parent is a flex container. */
 }
 
-/* Container for Canvas */
+/* Container for the simulation canvas display. */
 .simulation-display-container {
     width: 100%;
-    max-width: 750px; /* Simulation display area max width */
-    margin: 0 auto 1.5em auto; /* Center it */
-    position: relative; /* For absolute positioning of action buttons and FPS */
+    max-width: 750px; /* Maximum width for the simulation display area. */
+    margin: 0 auto 1.5em auto; /* Centers the container and adds bottom margin. */
+    position: relative; /* For positioning child elements like action buttons and FPS counter. */
 }
 
 .sim-canvas-wrapper {
-    width: 100%; /* Take full width of its parent */
-    position: relative; /* For FPS display */
-    box-sizing: border-box; /* Added for robustness */
+    width: 100%; /* Occupies full width of its parent. */
+    position: relative; /* For positioning the FPS display. */
+    box-sizing: border-box; /* Ensures padding/border are included in total width. */
 }
 .sim-aspect-ratio-box {
     position: relative; width: 100%; height: 0;
-    padding-bottom: calc(100% / (var(--aspect-ratio, 1)));
+    padding-bottom: calc(100% / (var(--aspect-ratio, 1))); /* Maintains aspect ratio using the padding-bottom trick. */
     overflow: hidden; border-radius: 4px;
     background-color: var(--color-bg-subtle);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     border: 1px solid var(--color-border);
 }
 .sim-canvas {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    display: block; touch-action: none;
-    image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; /* Fills the aspect-ratio box. */
+    display: block; /* Removes extra space below inline elements. */
+    touch-action: none; /* Disables default touch behaviors like pinch-zoom on the canvas. */
+    image-rendering: -webkit-optimize-contrast; /* Improves image rendering sharpness in WebKit. */
+    image-rendering: crisp-edges; /* Improves image rendering sharpness. */
 }
 
-/* Action Buttons Overlay (Fullscreen, Settings Toggle) */
+/* Overlay for action buttons (e.g., Fullscreen, Settings Toggle). */
 .sim-action-buttons-overlay {
-    /* position: fixed; <-- This will be set by JS */
-    /* top: calc(var(--sim-button-offset) + 60px); REMOVE - JS will handle top */
-    right: var(--sim-button-offset);
-    z-index: 5000; /* Higher than panel (4000) */
+    /* Position is dynamically set by JavaScript. */
+    /* right: var(--sim-button-offset); REMOVED - JS handles left/right/top */
+    z-index: 3000; /* Below panel (4000) but above most content. */
     display: flex;
-    flex-direction: column; /* Stack buttons vertically */
-    gap: 10px; /* Space between buttons */
-    transition: right 0.3s ease-out; /* Animate alongside panel */
+    flex-direction: column; /* Stacks buttons vertically - REMAINS AS REQUESTED */
+    gap: 10px; /* Spacing between buttons. */
+    transition: opacity 0.3s ease-out, visibility 0.3s ease-out; /* For smooth hide/show */
+    opacity: 1;
+    visibility: visible;
 }
 
-/* Adjust button overlay position when panel is active */
+/* Hide action buttons when the control panel is open. */
 body.sim-panel-active .sim-action-buttons-overlay {
-    right: calc(var(--sim-panel-width) + var(--sim-button-offset));
+    opacity: 0;
+    visibility: hidden;
+    /* JS no longer moves this based on panel width, so no 'right' adjustment needed here. */
 }
 
+/* Disables visual feedback (background, border, shadow) on hover for action buttons specifically within the overlay. */
+/* This rule is important if the buttons have global hover styles that need to be overridden here. */
+.sim-action-buttons-overlay .sim-fullscreen-toggle:hover,
+.sim-action-buttons-overlay .sim-panel-toggle-button:hover {
+    background-color: transparent !important; /* Keep transparent or match base style if not transparent */
+    border-color: transparent !important; /* Keep transparent or match base style if not transparent */
+    box-shadow: none !important; /* No shadow on hover for these specific buttons */
+}
+
+/* General styling for fullscreen and panel toggle buttons. */
+/* These styles are ALREADY PRESENT and should NOT be changed as per user request */
 .sim-fullscreen-toggle,
 .sim-panel-toggle-button {
     border: none; 
-    outline: none; /* Remove focus outline */
-    background-color: var(--color-bg-header-nav); 
+    outline: none; /* Removes default focus outline. */
     color: var(--color-text); 
-    padding: 0.8em 1em; /* Increased padding for larger buttons */
-    border-radius: 8px; /* Slightly larger border-radius */
+    padding: 0; /* Padding removed; size is controlled by width/height. */
+    border-radius: 8px; /* Rounded corners. */
     cursor: pointer;
     line-height: 1; 
     box-shadow: none; 
-    display: inline-flex; /* Use flexbox for centering */
-    align-items: center;    /* Center icon vertically */
-    justify-content: center; /* Center icon horizontally */
-    min-width: 44px; /* Minimum width for better touch targets */
-    min-height: 44px; /* Minimum height for better touch targets */
+    display: inline-flex; /* Enables flex item alignment for centering icon. */
+    align-items: center;    /* Vertically centers the icon. */
+    justify-content: center; /* Horizontally centers the icon. */
+    width: 44px;  /* Fixed width for consistent button size and icon centering. */
+    height: 44px; /* Fixed height for consistent button size and icon centering. */
+    position: relative; /* Establishes positioning context for child elements (e.g., labels). */
 }
 
+/* Adjusts button text color for dark mode. */
+/* These styles are ALREADY PRESENT and should NOT be changed */
 html.dark-mode .sim-fullscreen-toggle,
 html.dark-mode .sim-panel-toggle-button {
-    background-color: var(--color-bg-header-nav); /* Dark mode header nav bg */
-    color: var(--color-text-light); /* Light text for dark header nav bg */
+    color: var(--color-text-light);
 }
 
+/* Default hover style for toggle buttons: no visual change. */
+/* These styles are ALREADY PRESENT and should NOT be changed */
 .sim-fullscreen-toggle:hover,
 .sim-panel-toggle-button:hover {
-    background-color: transparent !important; /* Ensure no background change on button hover */
-    border-color: transparent !important; /* Ensure no border change on button hover */
-    box-shadow: none !important; /* Ensure no shadow change on button hover */
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 
-/* Hover effect for the buttons */
+/* The following rule block is identical to a previous one for .sim-action-buttons-overlay :hover. */
+/* If the previous rule is sufficient, this block may be redundant. */
+/* These styles are ALREADY PRESENT and should NOT be changed */
 .sim-action-buttons-overlay .sim-fullscreen-toggle:hover,
 .sim-action-buttons-overlay .sim-panel-toggle-button:hover {
-    background-color: transparent !important; /* Ensure no background change on button hover */
-    border-color: transparent !important; /* Ensure no border change on button hover */
-    box-shadow: none !important; /* Ensure no shadow change on button hover */
+    background-color: transparent !important; 
+    border-color: transparent !important; 
+    box-shadow: none !important; 
 }
 
+/* Dark mode: Also disable visual feedback on hover for toggle buttons. */
+/* These styles are ALREADY PRESENT and should NOT be changed */
 html.dark-mode .sim-fullscreen-toggle:hover,
 html.dark-mode .sim-panel-toggle-button:hover {
-    background-color: transparent !important; /* Ensure no background change on button hover */
-    border-color: transparent !important; /* Ensure no border change on button hover */
-    box-shadow: none !important; /* Ensure no shadow change on button hover */
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 
 .sim-fullscreen-toggle .icon,
 .sim-panel-toggle-button .icon {
-    margin: 0; /* Remove any default margins from icon spans if present */
-    font-size: 1.2em; /* Slightly increase icon size if needed */
-    transition: color 0.2s ease-in-out; /* Add or ensure this transition for smooth color change */
+    margin: 0; /* Resets any default margins on icon elements. */
+    font-size: 1.2em; /* Icon size. */
+    transition: color 0.2s ease-in-out; /* Smooth color transition on hover/state change. */
+    display: flex; /* Enables flex item alignment within the icon container. */
+    align-items: center; /* Vertically centers content within the icon. */
+    justify-content: center; /* Horizontally centers content within the icon. */
+    height: 100%; /* Icon container fills button height. */
+    width: 100%; /* Icon container fills button width. */
 }
 
-/* FPS Display */
+/* Visually hides button labels, keeping them accessible to screen readers (sr-only technique). */
+.sim-fullscreen-toggle .icon .label,
+.sim-panel-toggle-button .icon .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px; /* Positions off-screen. */
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* FPS (Frames Per Second) display styling. */
 .sim-fps-display {
-    position: absolute; top: 10px; left: 10px;
+    position: absolute; top: 10px; left: 10px; /* Positioned at top-left of its relative parent (sim-canvas-wrapper). */
     background: rgba(0,0,0,0.7); color: #fff;
     padding: 0.25em 0.5em; border-radius: 3px;
-    font-size: 0.75em; z-index: 110; display: none;
+    font-size: 0.75em; z-index: 110; /* Above canvas, below panel/buttons. */
+    display: none; /* Typically shown/hidden by JavaScript. */
 }
 
-/* Description Area */
+/* Styling for the simulation description area. */
 .description-area {
     background-color: var(--color-bg-alt);
     padding: 1.5em; border-radius: 4px;
     border: 1px solid var(--color-border);
-    max-width: 750px; /* Match display container max-width */
-    margin: 0 auto; /* Center it */
+    max-width: 750px; /* Matches simulation display container's max-width for consistency. */
+    margin: 0 auto; /* Centers the description area. */
 }
 .description-area h3 {
     color: var(--color-text); margin-bottom: 0.75em;
@@ -213,117 +297,139 @@ html.dark-mode .sim-panel-toggle-button:hover {
 
 /* --- Fullscreen Active Styles --- */
 body.sim-fullscreen-active {
-    overflow: hidden; /* Prevent scrolling of page content behind fullscreen sim */
-    /* Background color will be inherited from html (light/dark mode) */
+    overflow: hidden; /* Prevents scrolling of underlying page content when simulation is fullscreen. */
+    /* Background color is inherited from <html> (handles light/dark mode). */
 }
+
+/* Hide non-simulation elements when fullscreen mode is active. */
 body.sim-fullscreen-active #wrapper > header,
 body.sim-fullscreen-active #wrapper > footer,
 body.sim-fullscreen-active #wrapper > #menu,
-body.sim-fullscreen-active #main > .inner > h1, /* Site H1 */
+body.sim-fullscreen-active #main > .inner > h1, /* Hides the main site H1. */
 body.sim-fullscreen-active #main > .inner > .simulation-area-wrapper > .simulation-main-content > .description-area {
-    display: none !important;
+    display: none !important; /* Force hide these elements. */
 }
 
+/* Expand main content area to fill viewport in fullscreen. */
 body.sim-fullscreen-active #main {
     padding: 0 !important; margin: 0 !important;
     height: 100vh; width: 100vw;
 }
 body.sim-fullscreen-active #main > .inner {
     padding: 0 !important; margin: 0 !important;
-    max-width: none !important; height: 100%; width: 100%;
-    display: flex; /* For centering content */
+    max-width: none !important; /* Allow full width. */
+    height: 100%; width: 100%;
+    display: flex; /* Used for centering or structuring fullscreen content. */
 }
 
+/* Adjust simulation wrapper for fullscreen mode. */
 body.sim-fullscreen-active .simulation-area-wrapper {
-    position: static; /* No longer needs to be fixed for panel */
+    position: static; /* Overrides 'relative' as it's no longer needed for panel positioning in this context. */
     width: 100%; height: 100%;
-    display: flex; /* To allow panel and main content to sit side-by-side if panel visible */
-    align-items: stretch;
-    box-sizing: border-box; /* Added for robustness */
+    display: flex; /* Allows panel and main content to be side-by-side if panel is open. */
+    align-items: stretch; /* Stretches children to fill height. */
+    box-sizing: border-box; /* Ensures padding/border are included in total width/height. */
 }
+/* Ensure control panel adapts correctly in fullscreen. */
 body.sim-fullscreen-active .sim-controls-panel {
-    /* Panel is already position:fixed, just ensure top/height are correct */
+    /* Panel remains 'position:fixed'. These rules ensure it's correctly sized and positioned. */
     top: 0 !important; 
     height: 100vh !important;
-    z-index: 4000; /* Ensure it's above fullscreen canvas content */
+    z-index: 4000; /* Ensures panel is above fullscreen canvas content but below action buttons. */
 }
 
+/* Main content area layout in fullscreen. */
 body.sim-fullscreen-active .simulation-main-content {
-    flex-grow: 1;
-    width: 100%; /* Ensure it takes full width available from parent flex */
-    height: 100%; /* Use full available height; padding will define content area */
+    flex-grow: 1; /* Takes remaining space if panel is visible. */
+    width: 100%; /* Occupies full available width from parent flex container. */
+    height: 100%; /* Occupies full available height. */
     display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Padding adjusted to maximize simulation area */
-    padding-top: calc(1vmin + 25px); /* Space for buttons + constant offset */
-    padding-right: 1vmin; /* No gap on the right */
-    padding-bottom: 1vmin; /* No gap on the bottom */
-    padding-left: 1vmin; /* No gap on the left */
+    align-items: center; /* Vertically centers the simulation display container. */
+    justify-content: center; /* Horizontally centers the simulation display container. */
+    /* Padding provides space around the simulation, e.g., for action buttons. */
+    padding-top: calc(1vmin + 25px); /* Top padding for overlay buttons and breathing room. */
+    padding-right: 1vmin;  /* Minimal right padding. */
+    padding-bottom: 1vmin; /* Minimal bottom padding. */
+    padding-left: 1vmin;   /* Minimal left padding. */
     box-sizing: border-box;
-    position: relative; /* For action buttons (though JS makes them fixed in FS) */
+    position: relative; /* Context for absolutely positioned children if any (though action buttons are typically fixed by JS in fullscreen). */
 }
 
+/* Simulation display container adjustments for fullscreen. */
 body.sim-fullscreen-active .simulation-display-container {
-    padding: 0; /* Padding now handled by .simulation-main-content */
+    padding: 0; /* Padding is now handled by .simulation-main-content. */
     box-sizing: border-box;
     width: 100%;
     height: 100%;
-    display: flex;
+    display: flex; /* Centers the canvas wrapper. */
     align-items: center;
     justify-content: center;
 }
 
+/* Canvas wrapper adjustments for fullscreen. */
 body.sim-fullscreen-active .sim-canvas-wrapper {
-    /* This wrapper is centered by .simulation-display-container */
-    /* It should allow .sim-aspect-ratio-box to define its size within the padded area */
+    /* Centered by .simulation-display-container (its flex parent). */
+    /* Allows .sim-aspect-ratio-box to size itself within the padded area. */
     width: 100%; 
     height: 100%; 
-    display: flex; /* To center aspect ratio box if it's smaller than 100% w/h */
+    display: flex; /* Centers aspect-ratio box if it's smaller than 100% width/height. */
     align-items: center;
     justify-content: center;
-    max-width: 100%; /* Ensure it doesn't overflow its parent */
+    max-width: 100%; /* Ensures it doesn't overflow parent. */
     max-height: 100%;
-    box-sizing: border-box; /* Added for robustness */
+    box-sizing: border-box; /* Ensures padding/border are included in total width/height. */
 }
 
+/* Aspect ratio box adjustments for fullscreen. */
 body.sim-fullscreen-active .sim-aspect-ratio-box {
-    /* Override general rule's sizing strategy for this fullscreen context */
-    width: auto;         /* Allow flexbox to size it based on aspect ratio and constraints */
-    height: auto;        /* Allow flexbox to size it */
-    padding-bottom: 0;   /* Disable the padding-based aspect ratio for fullscreen */
+    /* Overrides default padding-based aspect ratio for fullscreen. */
+    width: auto;         /* Flexbox sizes based on aspect-ratio and constraints. */
+    height: auto;        /* Flexbox sizes based on aspect-ratio. */
+    padding-bottom: 0;   /* Disables padding-bottom trick for aspect ratio. */
 
-    /* Apply modern CSS aspect-ratio */
-    aspect-ratio: var(--aspect-ratio, 1);
+    aspect-ratio: var(--aspect-ratio, 1); /* Uses modern CSS aspect-ratio property. */
 
-    /* Ensure it's constrained within the parent flex item boundaries */
+    /* Constrained within parent flex item boundaries. */
     max-width: 100%;
     max-height: 100%;
 
-    /* Visual styles (background, border, etc.) and position:relative, overflow:hidden
-       are inherited from the general .sim-aspect-ratio-box rule. */
+    /* Inherits visual styles (background, border, etc.) and position:relative, overflow:hidden
+       from the general .sim-aspect-ratio-box rule. */
 }
 
-/* Ensure simulation canvas itself scales within its wrapper */
+/* General canvas scaling (re-stated for clarity or overriding, ensure it's intended). */
+/* This rule is general and not specific to fullscreen, ensure its placement and necessity. */
 .sim-canvas {
-    display: block; /* Remove extra space below if it's inline */
+    display: block; /* Removes extra space if it were inline. */
     width: 100%;
-    height: 100%; /* Fill the aspect-ratio-box or its direct parent */
+    height: 100%; /* Fills its parent (e.g., sim-aspect-ratio-box). */
 }
 
-/* Responsive Adjustments */
-@media (max-width: 768px) { /* 'medium' screens and below */
-    /* Panel stays fixed right overlay, no change needed here for that */
-    .simulation-display-container {
-        /* Canvas takes full width, buttons might be handled by absolute positioning */
-        max-width: 100%; /* Allow display container to shrink fully */
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) { /* Styles for 'medium' screens (e.g., tablets) and smaller. */
+    .sim-action-buttons-overlay {
+        /* On small screens, when panel is closed and not fullscreen: */
+        /* JS now handles top and right positioning to place it inside the canvas area. */
+        /* left: 50%; REMOVED - No longer centered */
+        /* transform: translateX(-50%); REMOVED - No longer centered */
+        /* right: auto; REMOVED - JS sets right */
     }
-     .sim-action-buttons-overlay {
-        /* Position might need adjustment if it clashes with small screen elements */
-        top: 8px;
-        right: 8px;
+
+    body.sim-fullscreen-active .sim-action-buttons-overlay {
+        /* In fullscreen on small screens, JS handles fixed positioning to top right via --sim-button-offset */
+        left: auto; /* Ensure it doesn't stick to 50% */
+        transform: none; /* Remove translateX */
+        /* top and right are set by JS based on --sim-button-offset */
     }
-    .sim-fullscreen-toggle, .sim-panel-toggle-button {
-        width: 2.5em; height: 2.5em; font-size: 1.2em;
+
+    .sim-controls-panel {
+        width: 100%; /* Panel takes full width on small screens */
+        border-left: none; /* No left border when full width */
+        padding: 1em;
+    }
+
+    body.sim-panel-active .sim-action-buttons-overlay {
+        opacity: 0; /* Ensure it's hidden */
+        visibility: hidden; /* Ensure it's hidden and not focusable */
     }
 }

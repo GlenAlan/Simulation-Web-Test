@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smoothed Heat Conduction Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #222; color: #fff; font-family: sans-serif; }
+    #controls { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; z-index: 1; }
+    #controls label, #controls div { display: block; margin: 5px 0; }
+    #controls input { width: 150px; }
+    canvas { display: block; margin: 40px auto;}
+  </style>
+</head>
+<body>
+<div id="controls">
+  <label>Speed: <span id="timeScaleVal">25</span>x
+    <input type="range" id="timeScale" min="1" max="100" step="1" value="25">
+  </label>
+  <label>Heating Radius: <span id="heatSizeVal">50</span>
+    <input type="range" id="heatSize" min="10" max="100" step="1" value="50">
+  </label>
+  <label>Heat Intensity: <span id="heatAmpVal">1</span>
+    <input type="range" id="heatAmp" min="0.1" max="5" step="0.1" value="1">
+  </label>
+  <div>Avg. Temperature: <span id="energyVal">0.00</span>K</div>
+</div>
+<canvas id="canvas" width="800" height="400"></canvas>
+<script>
+// Setup
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const cols=20, rows=10, spacing=30, diag=spacing*Math.SQRT2;
+const width=canvas.width, height=canvas.height;
+const offsetX=(width-(cols-1)*spacing)/2, offsetY=(height-(rows-1)*spacing)/2;
+// Physics
+const kN=0.2, kR=0.5;
+const baseDt=0.005;
+const colorSmooth=0.97;
+let timeScale=25, heatRadius=30, heatAmp=1;
+// UI
+const timeSlider=document.getElementById('timeScale'), timeVal=document.getElementById('timeScaleVal');
+const sizeSlider=document.getElementById('heatSize'), sizeVal=document.getElementById('heatSizeVal');
+const ampSlider=document.getElementById('heatAmp'), ampVal=document.getElementById('heatAmpVal');
+const energyVal=document.getElementById('energyVal');
+timeSlider.oninput=()=>{timeScale=+timeSlider.value; timeVal.textContent=timeScale;};
+sizeSlider.oninput=()=>{heatRadius=+sizeSlider.value; sizeVal.textContent=heatRadius;};
+ampSlider.oninput=()=>{heatAmp=+ampSlider.value; ampVal.textContent=heatAmp.toFixed(1);};
+
+// Particle class with smoothed amplitude
+class Particle {
+  constructor(x0,y0){
+    this.x0=x0; this.y0=y0;
+    this.x=x0; this.y=y0;
+    this.vx=0; this.vy=0;
+    this.smAmp=0; // smoothed amplitude
+    this.neighbors=[];
+  }
+  addNeighbor(p,rest){ this.neighbors.push({p,rest}); }
+  computeAmp(){
+    const dx=this.x-this.x0, dy=this.y-this.y0;
+    return Math.hypot(dx,dy);
+  }
+}
+// Initialize particles and neighbors
+const particles=[];
+for(let i=0;i<cols;i++) for(let j=0;j<rows;j++) particles.push(new Particle(offsetX+i*spacing, offsetY+j*spacing));
+const idx=(i,j)=>i*rows+j;
+particles.forEach((p,i)=>{
+  const x=i/rows|0, y=i%rows;
+  [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1]].forEach(([dx,dy])=>{
+    const xi=x+dx, yj=y+dy;
+    if(xi>=0&&xi<cols&&yj>=0&&yj<rows){
+      const rest=(dx&&dy)?diag:spacing;
+      p.addNeighbor(particles[idx(xi,yj)], rest);
+    }
+  });
+});
+// Compute forces
+function computeForces(){
+  const F=particles.map(()=>({fx:0,fy:0}));
+  particles.forEach((p,i)=>{
+    // on-site
+    F[i].fx+=-kR*(p.x-p.x0);
+    F[i].fy+=-kR*(p.y-p.y0);
+    // springs
+    p.neighbors.forEach(({p:n,rest})=>{
+      const dx=p.x-n.x, dy=p.y-n.y;
+      const d=Math.hypot(dx,dy)||rest;
+      const f=-kN*(d-rest);
+      const fx=f*(dx/d), fy=f*(dy/d);
+      F[i].fx+=fx; F[i].fy+=fy;
+      const j=particles.indexOf(n);
+      F[j].fx-=fx; F[j].fy-=fy;
+    });
+  });
+  return F;
+}
+let forces=computeForces();
+// Energy
+function computeEnergy(){
+  let ke=0, pr=0, ps=0;
+  particles.forEach((p,i)=>{
+    ke+=0.5*(p.vx*p.vx+p.vy*p.vy);
+    const dx=p.x-p.x0, dy=p.y-p.y0;
+    pr+=0.5*kR*(dx*dx+dy*dy);
+    p.neighbors.forEach(({p:n,rest})=>{
+      const j=particles.indexOf(n);
+      if(j>i){ const ddx=p.x-n.x, ddy=p.y-n.y;
+        const diff=Math.hypot(ddx,ddy)-rest;
+        ps+=0.5*kN*diff*diff;
+      }
+    });
+  });
+  return ke+pr+ps;
+}
+// Heating
+let heating=false, mX=0, mY=0;
+canvas.onmousedown=()=>heating=true;
+canvas.onmouseup=()=>heating=false;
+canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect(); mX=e.clientX-r.left; mY=e.clientY-r.top;};
+// Main loop
+function animate(){
+  // heating
+  if(heating) particles.forEach(p=>{
+    const dx=p.x-mX, dy=p.y-mY;
+    const w=Math.exp(-(dx*dx+dy*dy)/(2*heatRadius*heatRadius));
+    const dv=heatAmp*w;
+    p.vx+=(Math.random()*2-1)*dv;
+    p.vy+=(Math.random()*2-1)*dv;
+  });
+  // integration
+  for(let s=0;s<timeScale;s++){
+    const dt=baseDt, half=0.5*dt;
+    particles.forEach((p,i)=>{ p.vx+=forces[i].fx*half; p.vy+=forces[i].fy*half; });
+    particles.forEach(p=>{ p.x+=p.vx*dt; p.y+=p.vy*dt; });
+    forces=computeForces();
+    particles.forEach((p,i)=>{ p.vx+=forces[i].fx*half; p.vy+=forces[i].fy*half; });
+  }
+  // draw
+  ctx.clearRect(0,0,width,height);
+  ctx.strokeStyle='#444';
+  particles.forEach(p=>p.neighbors.forEach(({p:n})=>{
+    if(n.x>p.x||n.y>p.y){ ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(n.x,n.y); ctx.stroke(); }
+  }));
+  particles.forEach(p=>{
+    // update smoothed amplitude
+    const a=p.computeAmp();
+    p.smAmp=colorSmooth*p.smAmp+(1-colorSmooth)*a;
+    // map color
+    const t=Math.min(p.smAmp,1);
+    const hue=(1-t)*240;
+    ctx.fillStyle=`hsl(${hue},100%,50%)`;
+    ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fill();
+  });
+  energyVal.textContent=computeEnergy().toFixed(0);
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>

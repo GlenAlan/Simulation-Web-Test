@@ -1,0 +1,162 @@
+<!DOCTYPE HTML>
+<!--
+	Phantom by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Conduction Simulation - Simulations.Science</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<script>
+			(function() {
+				var theme = 'light'; // Default theme
+				try {
+					var storedTheme = localStorage.getItem('theme');
+					if (storedTheme) {
+						theme = storedTheme;
+					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+						theme = 'dark';
+					}
+				} catch (e) { /* Ignore */ }
+
+				if (theme === 'dark') {
+					document.documentElement.classList.add('dark-mode');
+				}
+			})();
+		</script>
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<link rel="stylesheet" href="assets/css/simulation_styles.css" />
+		<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<div class="inner">
+							<!-- Logo -->
+								<a href="index.html" class="logo">
+									<span class="symbol"><img src="images/favicon.svg" alt="" /></span><span class="title">Simulations.Science</span>
+								</a>
+							<!-- Nav -->
+								<nav>
+									<ul>
+										<li>
+											<button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">
+												<span class="icon solid fa-sun"><span class="label">Light Mode</span></span>
+												<span class="icon solid fa-moon" style="display:none;"><span class="label">Dark Mode</span></span>
+											</button>
+										</li>
+										<li><a href="#menu">Menu</a></li>
+									</ul>
+								</nav>
+						</div>
+					</header>
+
+				<!-- Menu -->
+					<nav id="menu">
+						<h2>Menu</h2>
+						<ul>
+							<li><a href="index.html">Home</a></li>
+							<li><a href="conduction_simulation.html">Conduction Simulation</a></li>
+							<li><a href="convection_simulation.html">Convection Current</a></li>
+							<li><a href="conv.html">Ipsum veroeros</a></li>
+							<li><a href="generic.html">Tempus etiam</a></li>
+							<li><a href="generic.html">Consequat dolor</a></li>
+							<li><a href="elements.html">Elements</a></li>
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+						<div class="inner">
+							<h1 id="simulationTitle">Conduction Simulation</h1>
+							
+							<div class="simulation-area-wrapper">
+                                <div class="sim-controls-panel" id="simulationControlsPanel" role="region" aria-labelledby="simulationControlsPanelLabel">
+                                    <div class="sim-controls-header">
+                                        <h3 id="simulationControlsPanelLabel">Controls</h3>
+                                    </div>
+                                    <div class="sim-controls-content">
+                                        <label>Speed: <span id="timeScaleVal">25</span>x
+                                            <input type="range" id="timeScale" min="1" max="100" step="1" value="25">
+                                        </label>
+                                        <label>Heating Radius: <span id="heatSizeVal">50</span>
+                                            <input type="range" id="heatSize" min="10" max="100" step="1" value="50">
+                                        </label>
+                                        <label>Heat Intensity: <span id="heatAmpVal">1.0</span>
+                                            <input type="range" id="heatAmp" min="0.1" max="5" step="0.1" value="1">
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="simulation-main-content">
+                                    <div class="simulation-display-container">
+                                        <div class="sim-canvas-wrapper">
+                                            <div class="sim-aspect-ratio-box" style="--aspect-ratio: 2/1;">
+                                                <canvas id="simulationCanvas" class="sim-canvas"></canvas>
+                                            </div>
+                                            <div id="fpsDisplay" class="sim-fps-display">FPS: 0</div> <!-- Kept from template, conduction_core.js won't update it -->
+                                        </div>
+                                        <div class="sim-info-bar">
+                                            <span class="sim-info-item">Avg. Temperature: <span id="energyVal">0</span>K</span>
+                                            <button id="resetSimulationBtn" class="sim-reset-button" aria-label="Reset Simulation">
+                                                <span class="icon solid fa-sync-alt"></span> <!-- Changed fas to solid -->
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="sim-action-buttons-overlay">
+                                        <button class="sim-fullscreen-toggle" aria-label="Toggle Fullscreen View" aria-expanded="false">
+                                        </button>
+                                        <button class="sim-panel-toggle-button" aria-label="Toggle Controls Panel" aria-expanded="false" aria-controls="simulationControlsPanel">
+                                        </button>
+                                    </div>
+
+                                    <div class="description-area">
+                                        <h3>About this Simulation</h3>
+                                        <p>This simulation models heat conduction through a 2D lattice of particles. Each particle is connected to its neighbors by springs. When you "heat" an area with your mouse (or touch), you impart kinetic energy to the particles in that region, causing them to vibrate more vigorously. This vibrational energy then propagates through the lattice via the spring connections, demonstrating how heat conducts through a solid material.</p>
+                                        <p><strong>Controls:</strong></p>
+                                        <ul>
+                                            <li><strong>Speed:</strong> Adjusts the simulation rate. Higher values make time pass faster.</li>
+                                            <li><strong>Heating Radius:</strong> Controls the size of the area affected when you apply heat.</li>
+                                            <li><strong>Heat Intensity:</strong> Determines how much energy is added to the particles when heating.</li>
+                                            <li><strong>Avg. Temperature:</strong> Displays the average kinetic energy of all particles in the system, representing the overall "temperature" of the lattice.</li>
+                                        </ul>
+                                        <p>Click and drag on the canvas to apply heat. Observe how the color of the particles changes based on their individual kinetic energy (amplitude of vibration), with hotter particles appearing redder and cooler ones bluer.</p>
+                                    </div>
+                                </div>
+							</div>
+						</div>
+					</div>
+
+				<!-- Footer -->
+					<footer id="footer">
+						<div class="inner">
+							<section>
+								<h2>Other stuff</h2>
+								<ul class="icons">
+									<li><a href="https://glen-alan.com/" class="icon solid style2 fa-globe"><span class="label">Dribbble</span></a></li>
+									<li><a href="https://github.com/GlenAlan" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
+								</ul>
+							</section>
+							<ul class="copyright">
+								<li>&copy; Glen Pearce. All rights reserved</li><li>Web template from: <a href="http://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+			<script src="assets/js/simulation_ui.js"></script>
+			<script src="assets/js/conduction_core.js" defer></script>
+	</body>
+</html>

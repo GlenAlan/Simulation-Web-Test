@@ -253,6 +253,73 @@ html.dark-mode .sim-panel-close-button-inside {
     image-rendering: crisp-edges; /* Improves image rendering sharpness. */
 }
 
+/* Info bar below the canvas for temperature display and reset button */
+.sim-info-bar {
+    display: flex;
+    justify-content: space-between; /* Pushes temp to left, button to right */
+    align-items: center;
+    padding: 0.75em 0.5em; /* Padding around the info bar content */
+    margin-top: 0.5em; /* Space above the info bar */
+    background-color: var(--color-bg-subtle);
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+}
+
+.sim-info-item {
+    font-size: 0.9em;
+    color: var(--color-text);
+}
+
+.sim-info-item #energyVal {
+    color: var(--color-accent);
+    font-weight: bold;
+}
+
+/* Styling for the new Reset button, similar to panel toggle */
+.sim-reset-button {
+    border: none !important; 
+    outline: none !important;
+    color: var(--color-text); 
+    padding: 0; 
+    border-radius: 8px; 
+    cursor: pointer;
+    line-height: 1; 
+    box-shadow: none !important; 
+    display: inline-flex; 
+    align-items: center;    
+    justify-content: center; 
+    width: 44px;  /* Match panel toggle button size */
+    height: 44px; /* Match panel toggle button size */
+    background-color: transparent !important;
+    transition: color 0.2s ease-in-out; /* Smooth color transition for icon */
+}
+
+.sim-reset-button .icon {
+    display: inline-block; /* Ensure a block-like box for transform-origin */
+    font-size: 1em; /* Adjust icon size as needed */
+    transition: transform 0.5s ease-in-out; /* For potential hover effect on icon */
+    transform-origin: 38% 52%; /* Explicitly set to center */
+}
+
+.sim-reset-button:hover {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.sim-reset-button:hover .icon {
+    color: var(--color-accent); /* Icon color changes on button hover */
+    transform: rotate(180deg); /* Example hover effect: rotate icon */
+}
+
+html.dark-mode .sim-reset-button {
+    color: var(--color-text-light);
+}
+
+html.dark-mode .sim-reset-button:hover .icon {
+    color: var(--color-accent-light); /* Ensure hover color is appropriate for dark mode */
+}
+
+
 /* Overlay for action buttons (e.g., Fullscreen, Settings Toggle). */
 .sim-action-buttons-overlay {
     position: fixed; /* Changed from absolute to ensure it's relative to viewport */

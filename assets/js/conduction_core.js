@@ -19,8 +19,9 @@ let heatRadius = radiusSlider ? parseFloat(radiusSlider.value) : 50; // Original
 let heatAmp = heatAmpSlider ? parseFloat(heatAmpSlider.value) : 1;
 
 // Particle and Grid Setup (largely from original script)
-const cols = 20, rows = 10, spacing = 30; // Fixed grid size for now
-const diag = spacing * Math.SQRT2;
+const cols = 20, rows = 10; // Fixed grid size for now
+let spacing = 30; // Default spacing, will be updated
+let diag = spacing * Math.SQRT2; // Will be updated with spacing
 let canvasWidth = 800, canvasHeight = 400; // Default, will be updated
 
 // Physics constants
@@ -54,6 +55,18 @@ let offsetX, offsetY; // Will be calculated based on canvas size
 
 function initializeParticles() {
     particles.length = 0; // Clear existing particles if any (for potential resize)
+
+    // Dynamically calculate spacing based on canvas size and grid dimensions
+    // Ensure the grid fits within the canvas, leaving a small margin.
+    const margin = 25; // Margin in pixels
+    const availableWidth = canvasWidth - 2 * margin;
+    const availableHeight = canvasHeight - 2 * margin;
+
+    // Calculate spacing based on the limiting dimension
+    const spacingX = availableWidth / (cols -1);
+    const spacingY = availableHeight / (rows-1);
+    spacing = Math.min(spacingX, spacingY);
+    diag = spacing * Math.SQRT2; // Recalculate diag based on new spacing
     
     // Calculate offsets to center the grid
     offsetX = (canvasWidth - (cols - 1) * spacing) / 2;
@@ -350,12 +363,20 @@ function animate(timestamp) {
         physicsStepAccumulator = 0; // Reset accumulator to prevent further immediate loops
     }
     
-    // Update canvas resolution if it changed (existing logic)
-    if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
-        canvasWidth = canvas.width;
-        canvasHeight = canvas.height;
-        initializeParticles(); 
-        forces = computeForces(); // Update forces after re-initialization
+    // Update canvas resolution if it changed
+    // Check against the canvas element's actual clientWidth/clientHeight
+    if (canvas.clientWidth !== canvasWidth || canvas.clientHeight !== canvasHeight) {
+        canvasWidth = canvas.clientWidth;   // Update script's tracked width
+        canvasHeight = canvas.clientHeight; // Update script's tracked height
+        canvas.width = canvasWidth;         // Set drawing buffer width to match display
+        canvas.height = canvasHeight;       // Set drawing buffer height to match display
+        
+        // Re-initialize particles and forces if dimensions changed,
+        // as their positions depend on canvasWidth/Height.
+        if (particles.length > 0) { // Avoid re-init if particles weren't set up yet
+            initializeParticles(); 
+            forces = computeForces(); // Update forces after re-initialization
+        }
     }
     
     render();

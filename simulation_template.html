@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<!--
+	Phantom by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>[SIMULATION_TITLE] - Simulations.Science</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<script>
+			// Theme toggle script
+			(function() {
+				var theme = 'light'; // Default theme
+				try {
+					var storedTheme = localStorage.getItem('theme');
+					if (storedTheme) {
+						theme = storedTheme;
+					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+						theme = 'dark';
+					}
+				} catch (e) { /* Ignore */ }
+
+				if (theme === 'dark') {
+					document.documentElement.classList.add('dark-mode');
+				}
+			})();
+		</script>
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<link rel="stylesheet" href="assets/css/simulation_styles.css" />
+		<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<div class="inner">
+							<!-- Logo -->
+								<a href="index.html" class="logo">
+									<span class="symbol"><img src="images/favicon.svg" alt="" /></span><span class="title">Simulations.Science</span>
+								</a>
+							<!-- Nav -->
+								<nav>
+									<ul>
+										<li>
+											<button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">
+												<span class="icon solid fa-sun"><span class="label">Light Mode</span></span>
+												<span class="icon solid fa-moon" style="display:none;"><span class="label">Dark Mode</span></span>
+											</button>
+										</li>
+										<li><a href="#menu">Menu</a></li>
+									</ul>
+								</nav>
+						</div>
+					</header>
+
+				<!-- Menu -->
+					<nav id="menu">
+						<h2>Menu</h2>
+						<ul>
+							<li><a href="index.html">Home</a></li>
+							<li><a href="convection_simulation.html">Convection</a></li>
+							<li><a href="conduction_simulation.html">Conduction</a></li>
+                            <!-- Add other simulations here -->
+							<li><a href="simulation_template.html">[SIMULATION_TITLE]</a></li> 
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+						<div class="inner">
+							<h1 id="simulationTitle">[SIMULATION_TITLE]</h1>
+							
+							<div class="simulation-area-wrapper">
+                                <div class="sim-controls-panel" id="simulationControlsPanel" role="region" aria-labelledby="simulationControlsPanelLabel">
+                                    <div class="sim-controls-header">
+                                        <h3 id="simulationControlsPanelLabel">Controls</h3>
+                                    </div>
+                                    <div class="sim-controls-content">
+                                        <!-- Simulation-specific controls will go here -->
+                                        <label>Speed: <span id="timeScaleVal">1.0</span>x
+                                            <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="1.0">
+                                        </label>
+                                        <p><em>Add more controls as needed for your simulation.</em></p>
+                                    </div>
+                                </div>
+
+                                <div class="simulation-main-content">
+                                    <div class="simulation-display-container">
+                                        <div class="sim-canvas-wrapper">
+                                            <div class="sim-aspect-ratio-box" style="--aspect-ratio: 2/1;">
+                                                <canvas id="simulationCanvas" class="sim-canvas"></canvas>
+                                            </div>
+                                            <div id="fpsDisplay" class="sim-fps-display">FPS: 0</div>
+                                        </div>
+                                        <div class="sim-info-bar">
+                                            <span class="sim-info-item">Data: <span id="simDataVal">0</span></span>
+                                            <button id="resetSimulationBtn" class="sim-reset-button" aria-label="Reset Simulation">
+                                                <span class="icon solid fa-sync-alt"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="sim-action-buttons-overlay">
+                                        <button class="sim-fullscreen-toggle" aria-label="Toggle Fullscreen View" aria-expanded="false">
+                                            <!-- Icon will be managed by simulation_ui.js -->
+                                        </button>
+                                        <button class="sim-panel-toggle-button" aria-label="Toggle Controls Panel" aria-expanded="false" aria-controls="simulationControlsPanel">
+                                            <!-- Icon will be managed by simulation_ui.js -->
+                                        </button>
+                                    </div>
+
+                                    <div class="description-area">
+                                        <h3>About this Simulation</h3>
+                                        <p>[DETAILED_DESCRIPTION_OF_THE_SIMULATION]</p>
+                                        <p><strong>Controls:</strong></p>
+                                        <ul>
+                                            <li><strong>Speed:</strong> Adjusts the simulation rate.</li>
+                                            <!-- Add descriptions for other controls -->
+                                        </ul>
+                                        <p>[INTERACTION_INSTRUCTIONS_IF_ANY]</p>
+                                    </div>
+                                </div>
+							</div>
+						</div>
+					</div>
+
+				<!-- Footer -->
+					<footer id="footer">
+						<div class="inner">
+							<section>
+								<h2>Other stuff</h2>
+								<ul class="icons">
+									<li><a href="https://glen-alan.com/" class="icon solid style2 fa-globe"><span class="label">Dribbble</span></a></li>
+									<li><a href="https://github.com/GlenAlan" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
+								</ul>
+							</section>
+							<ul class="copyright">
+								<li>&copy; Glen Pearce. All rights reserved</li><li>Web template from: <a href="http://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+			<script src="assets/js/simulation_ui.js"></script> <!-- Generic UI handler -->
+			<script src="assets/js/simulation_template_core.js" defer></script> <!-- Simulation specific logic -->
+	</body>
+</html>

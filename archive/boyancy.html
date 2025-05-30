@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buoyancy Simulator with Enhanced Force Arrows</title>
+  <style>
+    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; font-family:sans-serif; }
+    canvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; }
+    #controls { position:absolute; top:10px; left:10px; background:rgba(255,255,255,0.9); padding:10px; border-radius:4px; z-index:10; }
+    #controls label, #controls button { display:block; margin:6px 0; }
+    #info { margin-top:8px; line-height:1.4; }
+    #massValue, #speedValue { font-weight:bold; margin-left:8px; }
+    #legend { margin-top:8px; font-size:0.9em; }
+    #legend div { margin:4px 0; display:flex; align-items:center; }
+    #legend span { width:20px; height:4px; display:inline-block; margin-right:6px; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" resize></canvas>
+  <div id="controls">
+    <label>Mass (kg):
+      <input id="massSlider" type="range" min="10" max="10000" step="10" value="100">
+      <span id="massValue">100</span>
+    </label>
+    <label>Speed:
+      <input id="speedSlider" type="range" min="0.1" max="5" step="0.1" value="1">
+      <span id="speedValue">1.0</span>
+    </label>
+    <label><input id="showForces" type="checkbox"> Show Force Vectors</label>
+    <div id="legend">
+      <div><span style="background:red;"></span>Weight</div>
+      <div><span style="background:green;"></span>Buoyancy</div>
+    </div>
+    <button id="resetBtn">Reset Drawing</button>
+    <button id="dropBtn">Drop Shape</button>
+    <div id="info"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+  <script type="text/paperscript" canvas="canvas">
+    var g = 9.8;
+    var waterDensity = 1000;
+    var thickness = 1;
+    var pxToM = 0.01;
+    var mToPx = 1 / pxToM;
+    var dampingCoef = 1000;
+    var smoothingRate = 2;
+    var arrowScale = 0.005;
+    var arrowThickness = 3;
+    var arrowHeadLen = 12;
+    var arrowHeadAngleDeg = 30;
+
+    function getCentroid(path) {
+      var pts = path.segments.map(function(s) { return s.point; });
+      var area = 0, cx = 0, cy = 0;
+      var n = pts.length;
+      for (var i = 0; i < n; i++) {
+        var p0 = pts[i];
+        var p1 = pts[(i + 1) % n];
+        var cross = p0.x * p1.y - p1.x * p0.y;
+        area += cross;
+        cx += (p0.x + p1.x) * cross;
+        cy += (p0.y + p1.y) * cross;
+      }
+      area *= 0.5;
+      cx /= (6 * area);
+      cy /= (6 * area);
+      return new Point(cx, cy);
+    }
+
+    var drawing = true;
+    var shape, tempPath, displacedRegion;
+    var velocity = 0;
+    var targetMass, mass;
+    var simulationSpeed = 1;
+    var showForces = false;
+    var arrows = [];
+
+    var waterLevel, waterRect, drawRegion, drawOutline;
+    function setupRegions() {
+      var w = view.size.width, h = view.size.height;
+      waterLevel = h / 2;
+      if (waterRect) waterRect.remove();
+      if (drawOutline) drawOutline.remove();
+      waterRect = new Path.Rectangle({ point: [0, waterLevel], size: [w, h - waterLevel], fillColor: '#a0d6f9' });
+      var rw = w * 0.6, rx = (w - rw) / 2;
+      drawRegion = new Rectangle(new Point(rx, 0), new Size(rw, waterLevel));
+      drawOutline = new Path.Rectangle({ rectangle: drawRegion, strokeColor: '#666', dashArray: [4,4] });
+    }
+    setupRegions();
+    view.onResize = function() { setupRegions(); reset(); };
+
+    var tool = new Tool();
+    tool.minDistance = 5;
+    tool.onMouseDown = function(e) { if (!drawing || !drawRegion.contains(e.point)) return; if (tempPath) tempPath.remove(); tempPath = new Path({ segments: [e.point], strokeColor: 'black', strokeWidth: 2 }); };
+    tool.onMouseDrag = function(e) { if (!drawing || !tempPath) return; if (drawRegion.contains(e.point)) tempPath.add(e.point); };
+    tool.onMouseUp = function() { if (!drawing || !tempPath) return; tempPath.closed = true; tempPath.simplify(8); tempPath.fillColor = '#ddd'; shape = tempPath; tempPath = null; drawing = false; };
+
+    var massSlider = document.getElementById('massSlider'), massValue = document.getElementById('massValue');
+    var speedSlider = document.getElementById('speedSlider'), speedValue = document.getElementById('speedValue');
+    var showForcesChk = document.getElementById('showForces');
+    targetMass = parseFloat(massSlider.value); mass = targetMass;
+    simulationSpeed = parseFloat(speedSlider.value);
+    massSlider.oninput = function() { targetMass = parseFloat(this.value); massValue.textContent = targetMass.toFixed(0); };
+    massSlider.onchange = function() { mass = targetMass; };
+    speedSlider.oninput = function() { simulationSpeed = parseFloat(this.value); speedValue.textContent = simulationSpeed.toFixed(1); };
+    showForcesChk.onchange = function() { showForces = this.checked; };
+
+    function reset() {
+      view.onFrame = null;
+      if (shape) shape.remove(); shape = null;
+      if (tempPath) tempPath.remove(); tempPath = null;
+      if (displacedRegion) displacedRegion.remove(); displacedRegion = null;
+      clearArrows(); drawing = true; velocity = 0;
+      targetMass = parseFloat(massSlider.value); mass = targetMass;
+      document.getElementById('info').innerHTML = '';
+    }
+    document.getElementById('resetBtn').onclick = reset;
+
+    function clearArrows() {
+      arrows.forEach(function(p) { p.remove(); }); arrows = [];
+    }
+
+    document.getElementById('dropBtn').onclick = function() {
+      if (!shape) return;
+      if (displacedRegion) displacedRegion.remove(); displacedRegion = null;
+      clearArrows(); velocity = 0;
+      document.getElementById('info').innerHTML = '';
+      view.onFrame = simulate;
+    };
+
+    function simulate(event) {
+      var dt = event.delta * simulationSpeed;
+      mass += (targetMass - mass) * smoothingRate * dt;
+      shape.translate(new Point(0, velocity * mToPx * dt));
+      var b = shape.bounds;
+      if (b.top < 0) { shape.translate(0, -b.top); velocity = 0; }
+      if (b.bottom > view.size.height) { shape.translate(0, view.size.height - b.bottom); velocity = 0; }
+      if (displacedRegion) displacedRegion.remove(); clearArrows();
+      var sub = shape.intersect(waterRect);
+      var subPx = sub && sub.area ? Math.abs(sub.area) : 0;
+      var subA = subPx * pxToM * pxToM;
+      if (sub) { displacedRegion = sub; displacedRegion.fillColor = 'rgba(0,100,255,0.4)'; displacedRegion.strokeColor = null; }
+      var totA = Math.abs(shape.area) * pxToM * pxToM;
+      var weight = mass * g;
+      var buoyant = waterDensity * g * subA * thickness;
+      var drag = subA > 0 ? -dampingCoef * subA * velocity : 0;
+      var netF = weight - buoyant + drag;
+      var accel = netF / mass;
+      velocity += accel * dt;
+      if (showForces) {
+        var c = getCentroid(shape);
+        drawArrow(c, c.add(new Point(0, -buoyant * arrowScale)), 'green');
+        drawArrow(c, c.add(new Point(0, weight * arrowScale)), 'red');
+      }
+      document.getElementById('info').innerHTML =
+        'Total Area: ' + totA.toFixed(3) + ' m²<br>' +
+        'Submerged: ' + subA.toFixed(3) + ' m²<br>' +
+        'Mass: ' + mass.toFixed(2) + ' kg<br>' +
+        'Weight: ' + weight.toFixed(1) + ' N<br>' +
+        'Buoyant: ' + buoyant.toFixed(1) + ' N<br>' +
+        'Drag: ' + (-drag).toFixed(1) + ' N';
+      if (Math.abs(velocity) < 0.005 && Math.abs(netF) < 0.5) view.onFrame = null;
+    }
+
+    function drawArrow(from, to, color) {
+      var line = new Path.Line({ from: from, to: to, strokeColor: color, strokeWidth: arrowThickness });
+      arrows.push(line);
+      var dir = to.subtract(from);
+      var angle = dir.angle;
+      var left = to.subtract(new Point({ length: arrowHeadLen, angle: angle - arrowHeadAngleDeg }));
+      var right = to.subtract(new Point({ length: arrowHeadLen, angle: angle + arrowHeadAngleDeg }));
+      var head = new Path({ segments: [to, left, right], closed: true, fillColor: color });
+      arrows.push(head);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Collision Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    #ui { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 4px; max-width: 340px; }
+    .stat { font-weight: bold; margin-bottom: 4px; }
+    .slider-container { margin: 8px 0; }
+    label { font-size: 12px; }
+    button { margin-right: 8px; margin-top: 4px; }
+    #soundToggle { vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="ui">
+    <div id="totalEnergy" class="stat">Total Energy: 0.0</div>
+    <div class="slider-container">
+      <label for="dtSlider">Time Step: <span id="dtDisplay">0.017</span> s</label><br />
+      <input type="range" id="dtSlider" min="0.005" max="0.05" step="0.001" value="0.017" />
+    </div>
+    <div class="slider-container">
+      <label for="scaleSlider">Vector Scale: <span id="scaleDisplay">0.10</span></label><br />
+      <input type="range" id="scaleSlider" min="0.01" max="0.5" step="0.01" value="0.10" />
+    </div>
+    <div class="slider-container">
+      <label><input type="checkbox" id="soundToggle" checked /> Sound</label>
+    </div>
+    <button id="add">Add Ball</button>
+    <button id="reset">Reset</button>
+    <button id="heatBtn">Heat</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      centerX = width / 2;
+      centerY = height / 2;
+    });
+
+    // audio context for click sound
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let soundEnabled = true;
+    document.getElementById('soundToggle').addEventListener('change', e => {
+      soundEnabled = e.target.checked;
+    });
+    function playClick() {
+      if (!soundEnabled) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+      gain.gain.setValueAtTime(1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.03);
+    }
+
+    // time step slider
+    let dt = parseFloat(document.getElementById('dtSlider').value);
+    document.getElementById('dtSlider').addEventListener('input', e => {
+      dt = parseFloat(e.target.value);
+      document.getElementById('dtDisplay').textContent = dt.toFixed(3);
+    });
+
+    // vector scale slider
+    let vectorScale = parseFloat(document.getElementById('scaleSlider').value);
+    document.getElementById('scaleSlider').addEventListener('input', e => {
+      vectorScale = parseFloat(e.target.value);
+      document.getElementById('scaleDisplay').textContent = vectorScale.toFixed(2);
+    });
+
+    // circular wall
+    let centerX = width / 2;
+    let centerY = height / 2;
+    const ballRadius = 20;
+    const wallRadius = ballRadius * 15;
+    const wallImpulses = [];
+
+    // heating
+    let heating = false;
+    const heatRate = 0.5; // per second
+    const heatBtn = document.getElementById('heatBtn');
+    heatBtn.addEventListener('mousedown', () => { heating = true; });
+    heatBtn.addEventListener('mouseup', () => { heating = false; });
+    heatBtn.addEventListener('mouseleave', () => { heating = false; });
+
+    class Ball {
+      constructor(x, y, vx, vy, r = ballRadius, m = 1) {
+        this.x = x; this.y = y;
+        this.vx = vx; this.vy = vy;
+        this.r = r; this.m = m;
+      }
+      update(dt) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        const dx = this.x - centerX;
+        const dy = this.y - centerY;
+        const dist = Math.hypot(dx, dy);
+        if (dist + this.r > wallRadius) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const contactX = centerX + nx * wallRadius;
+          const contactY = centerY + ny * wallRadius;
+          const vDotN = this.vx * nx + this.vy * ny;
+          const dvx = -2 * vDotN * nx;
+          const dvy = -2 * vDotN * ny;
+          this.vx += dvx;
+          this.vy += dvy;
+          playClick();
+          wallImpulses.push({ x: contactX, y: contactY, px: -this.m * dvx, py: -this.m * dvy });
+          this.x = centerX + nx * (wallRadius - this.r - 0.1);
+          this.y = centerY + ny * (wallRadius - this.r - 0.1);
+        }
+      }
+      draw(ctx) {
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, 2*Math.PI);
+        ctx.fillStyle='lightblue'; ctx.fill(); ctx.strokeStyle='blue'; ctx.stroke();
+        const ke = 0.5*this.m*(this.vx*this.vx+this.vy*this.vy);
+        ctx.fillStyle='black'; ctx.font='12px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(ke.toFixed(1), this.x, this.y);
+        // ball momentum (red)
+        const px = this.vx*this.m, py = this.vy*this.m;
+        const ex = this.x + px*vectorScale;
+        const ey = this.y + py*vectorScale;
+        ctx.beginPath(); ctx.moveTo(this.x,this.y); ctx.lineTo(ex,ey);
+        ctx.strokeStyle='red'; ctx.lineWidth=2; ctx.stroke();
+        const ang=Math.atan2(ey-this.y,ex-this.x), hl=8;
+        ctx.beginPath(); ctx.moveTo(ex,ey);
+        ctx.lineTo(ex-hl*Math.cos(ang-Math.PI/6),ey-hl*Math.sin(ang-Math.PI/6));
+        ctx.lineTo(ex-hl*Math.cos(ang+Math.PI/6),ey-hl*Math.sin(ang+Math.PI/6));
+        ctx.closePath(); ctx.fillStyle='red'; ctx.fill();
+      }
+    }
+
+    let balls = [];
+    function addRandomBall() {
+      const angle = Math.random()*2*Math.PI;
+      const rpos = (wallRadius-ballRadius-10)*Math.sqrt(Math.random());
+      const x = centerX + rpos*Math.cos(angle);
+      const y = centerY + rpos*Math.sin(angle);
+      const vx = Math.random()*200-100;
+      const vy = Math.random()*200-100;
+      balls.push(new Ball(x,y,vx,vy));
+    }
+    function reset() {
+      balls = [];
+      wallImpulses.length = 0;
+      balls.push(new Ball(centerX-100,centerY,100,0));
+      balls.push(new Ball(centerX+100,centerY,-100,0));
+    }
+
+    function animate() {
+      ctx.clearRect(0,0,width,height);
+      // heating effect
+      if (heating) {
+        balls.forEach(b => {
+          b.vx *= 1 + heatRate * dt;
+          b.vy *= 1 + heatRate * dt;
+        });
+      }
+      // draw wall
+      ctx.beginPath(); ctx.arc(centerX,centerY,wallRadius,0,2*Math.PI);
+      ctx.strokeStyle='black'; ctx.lineWidth=2; ctx.stroke();
+      // update & draw
+      balls.forEach(b => b.update(dt));
+      // ball-ball collisions
+      for (let i=0;i<balls.length;i++){
+        for (let j=i+1;j<balls.length;j++){
+          const b1=balls[i], b2=balls[j];
+          const dx=b2.x-b1.x, dy=b2.y-b1.y;
+          const dist=Math.hypot(dx,dy), minDist=b1.r+b2.r;
+          if(dist<minDist){
+            const nx=dx/dist, ny=dy/dist;
+            const overlap=minDist-dist;
+            b1.x-=nx*overlap/2; b1.y-=ny*overlap/2;
+            b2.x+=nx*overlap/2; b2.y+=ny*overlap/2;
+            const tx=-ny, ty=nx;
+            const v1n=b1.vx*nx + b1.vy*ny, v1t=b1.vx*tx + b1.vy*ty;
+            const v2n=b2.vx*nx + b2.vy*ny, v2t=b2.vx*tx + b2.vy*ty;
+            const m1=b1.m, m2=b2.m;
+            const v1nP=(v1n*(m1-m2)+2*m2*v2n)/(m1+m2);
+            const v2nP=(v2n*(m2-m1)+2*m1*v1n)/(m1+m2);
+            b1.vx=v1nP*nx + v1t*tx; b1.vy=v1nP*ny + v1t*ty;
+            b2.vx=v2nP*nx + v2t*tx; b2.vy=v2nP*ny + v2t*ty;
+          }
+        }
+      }
+      // draw wall impulses (green)
+      wallImpulses.forEach(imp=>{
+        const ex = imp.x + imp.px*vectorScale;
+        const ey = imp.y + imp.py*vectorScale;
+        ctx.beginPath(); ctx.moveTo(imp.x,imp.y); ctx.lineTo(ex,ey);
+        ctx.strokeStyle='green'; ctx.lineWidth=2; ctx.stroke();
+        const ang=Math.atan2(ey-imp.y,ex-imp.x), hl=8;
+        ctx.beginPath(); ctx.moveTo(ex,ey);
+        ctx.lineTo(ex-hl*Math.cos(ang-Math.PI/6), ey-hl*Math.sin(ang-Math.PI/6));
+        ctx.lineTo(ex-hl*Math.cos(ang+Math.PI/6), ey-hl*Math.sin(ang+Math.PI/6));
+        ctx.closePath(); ctx.fillStyle='green'; ctx.fill();
+      });
+      // draw balls
+      balls.forEach(b=>b.draw(ctx));
+      // update energy
+      const totalEnergy = balls.reduce((s,b)=>s+0.5*b.m*(b.vx*b.vx+b.vy*b.vy),0);
+      document.getElementById('totalEnergy').textContent = 'Total Energy: ' + totalEnergy.toFixed(1);
+      requestAnimationFrame(animate);
+    }
+
+    document.getElementById('add').addEventListener('click',addRandomBall);
+    document.getElementById('reset').addEventListener('click',reset);
+    reset(); animate();
+  </script>
+</body>
+</html>

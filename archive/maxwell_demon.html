@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maxwell's Demon Simulation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    body { margin: 0; overflow-x: hidden; background: #222; color: #fff; font-family: sans-serif; }
+    #controls { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; z-index: 1; }
+    #controls label { display: block; margin: 5px 0; }
+    #controls input[type=range] { width: 150px; }
+    canvas.simulation { display: block; margin: 40px auto 10px; background: #111; border: 1px solid #444; }
+    #stats { text-align: center; margin: 10px auto; font-size: 14px; max-width: 800px; }
+    .stats-container { display: flex; justify-content: space-around; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+    .stats-box { padding: 5px 15px; }
+    #charts-container { 
+      display: flex; 
+      justify-content: space-around; 
+      max-width: 800px; 
+      margin: 10px auto; 
+      background: rgba(0,0,0,0.6); 
+      padding: 10px; 
+      border-radius: 5px;
+    }
+    .chart-box {
+      width: 48%;
+      height: 200px;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>Particles per Color: <span id="countVal">100</span>
+      <input type="range" id="particleCount" min="1" max="500" step="1" value="100">
+    </label>
+    <label>Speed (ticks/frame): <span id="speedVal">10</span>
+      <input type="range" id="speedSlider" min="1" max="250" step="1" value="10">
+    </label>
+    <label>Gate Size: <span id="gateSizeVal">100</span>
+      <input type="range" id="gateSizeSlider" min="20" max="300" step="10" value="100">
+    </label>
+    <label><input type="checkbox" id="autoMode" checked="true"> Auto Mode (Maxwell's Demon)</label>
+    <label><input type="checkbox" id="showCharts"> Show Charts</label>
+    <div style="font-size:0.9em; color:#aaa; margin-top:5px;">(Manual: hold mouse to open gate)</div>
+  </div>
+
+  <canvas id="canvas" class="simulation" width="800" height="400"></canvas>
+  
+  <div id="stats">
+    <div class="stats-container">
+      <div class="stats-box">
+        <strong>Left Chamber:</strong> <span id="leftRed">0</span> Red, <span id="leftBlue">0</span> Blue
+      </div>
+      <div class="stats-box">
+        <strong>Right Chamber:</strong> <span id="rightRed">0</span> Red, <span id="rightBlue">0</span> Blue
+      </div>
+    </div>
+  </div>
+  
+  <div id="charts-container" style="display: none;">
+    <div class="chart-box">
+      <canvas id="leftChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <canvas id="rightChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+    const width  = canvas.width;
+    const height = canvas.height;
+    const centerX = width/2;
+
+    const slider = document.getElementById('particleCount');
+    const countVal = document.getElementById('countVal');
+    const autoCB = document.getElementById('autoMode');
+    const showChartsCB = document.getElementById('showCharts');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValEl = document.getElementById('speedVal');
+    const gateSizeSlider = document.getElementById('gateSizeSlider');
+    const gateSizeValEl = document.getElementById('gateSizeVal');
+    const chartsContainer = document.getElementById('charts-container');
+
+    // Stats elements
+    const leftRedEl = document.getElementById('leftRed');
+    const leftBlueEl = document.getElementById('leftBlue');
+    const rightRedEl = document.getElementById('rightRed');
+    const rightBlueEl = document.getElementById('rightBlue');
+
+    let nPerColor = +slider.value;
+    let particles = [];
+    let autoMode = autoCB.checked;
+    let gateOpen = false;
+    let mouseDown = false;
+    let ticksPerFrame = +speedSlider.value;
+    let gateSize = +gateSizeSlider.value;
+    
+    // Chart data
+    const maxDataPoints = 1000; // Increased to allow for longer history
+    const chartData = {
+      left: {
+        timestamps: [],
+        red: [],
+        blue: []
+      },
+      right: {
+        timestamps: [],
+        red: [],
+        blue: []
+      },
+      startTime: 0,
+      simulationTime: 0, // Track total simulation time
+      lastUpdateTime: 0,
+      timeFactor: 1.0    // Factor to normalize time based on simulation speed
+    };
+    
+    // Setup charts
+    const leftChartCtx = document.getElementById('leftChart').getContext('2d');
+    const rightChartCtx = document.getElementById('rightChart').getContext('2d');
+    
+    const leftChart = new Chart(leftChartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Red Particles',
+            data: [],
+            borderColor: 'rgba(255, 0, 0, 0.8)',
+            backgroundColor: 'rgba(255, 0, 0, 0.2)',
+            fill: true,
+            tension: 0.2
+          },
+          {
+            label: 'Blue Particles',  
+            data: [],
+            borderColor: 'rgba(0, 100, 255, 0.8)',
+            backgroundColor: 'rgba(0, 100, 255, 0.2)',
+            fill: true,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Left Chamber',
+            color: '#fff'
+          },
+          legend: {
+            labels: {
+              color: '#fff'
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom',
+            title: {
+              display: true,
+              text: 'Simulation Time (seconds)',
+              color: '#aaa'
+            },
+            min: 0,
+            max: 10, // Initial 10 second view
+            ticks: { 
+              color: '#aaa', 
+              maxTicksLimit: 10,
+              callback: function(value) {
+                return value.toFixed(1) + 's';
+              }
+            },
+            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#aaa' },
+            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+          }
+        }
+      }
+    });
+    
+    const rightChart = new Chart(rightChartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Red Particles',
+            data: [],
+            borderColor: 'rgba(255, 0, 0, 0.8)',
+            backgroundColor: 'rgba(255, 0, 0, 0.2)',
+            fill: true,
+            tension: 0.2
+          },
+          {
+            label: 'Blue Particles',  
+            data: [],
+            borderColor: 'rgba(0, 100, 255, 0.8)',
+            backgroundColor: 'rgba(0, 100, 255, 0.2)',
+            fill: true,
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Right Chamber',
+            color: '#fff'
+          },
+          legend: {
+            labels: {
+              color: '#fff'
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom',
+            title: {
+              display: true,
+              text: 'Simulation Time (seconds)',
+              color: '#aaa'
+            },
+            min: 0,
+            max: 10, // Initial 10 second view
+            ticks: { 
+              color: '#aaa', 
+              maxTicksLimit: 10,
+              callback: function(value) {
+                return value.toFixed(1) + 's';
+              }
+            },
+            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#aaa' },
+            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+          }
+        }
+      }
+    });
+
+    // Toggle charts visibility
+    showChartsCB.onchange = () => {
+      chartsContainer.style.display = showChartsCB.checked ? 'flex' : 'none';
+    };
+
+    const radius = 5;
+    const dt = 0.1; // fixed timestep
+
+    class Particle {
+      constructor(x, y, vx, vy, color) { 
+        this.x = x; 
+        this.y = y; 
+        this.vx = vx; 
+        this.vy = vy; 
+        this.color = color; 
+        this.lastUpdateTime = 0;
+      }
+      
+      // Calculate kinetic energy (proportional to speed squared)
+      get energy() {
+        return 0.5 * (this.vx * this.vx + this.vy * this.vy);
+      }
+      
+      // Get current speed
+      get speed() {
+        return Math.hypot(this.vx, this.vy);  
+      }
+      
+      // Set speed while preserving direction
+      setSpeed(newSpeed) {
+        if (this.speed === 0) return; // Avoid division by zero
+        const factor = newSpeed / this.speed;
+        this.vx *= factor;
+        this.vy *= factor;
+      }
+    }
+
+    function initParticles() {
+      particles = [];
+      for(let i = 0; i < 2 * nPerColor; i++) {
+        const color = i < nPerColor ? 'red' : 'blue';
+        
+        // Place particles randomly throughout the entire chamber
+        const x = Math.random() * (width - 2 * radius) + radius;
+        const y = Math.random() * (height - 2 * radius) + radius;
+        
+        // Avoid creating particles too close to the barrier
+        if (Math.abs(x - centerX) < radius * 2) {
+          i--; // Try again
+          continue;
+        }
+        
+        // Initial velocity with better distribution
+        const speed = 1 + Math.random() * 2;
+        const angle = Math.random() * Math.PI * 2;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+        
+        particles.push(new Particle(x, y, vx, vy, color));
+      }
+      
+      // Reset chart data and simulation time
+      chartData.left.timestamps = [];
+      chartData.left.red = [];
+      chartData.left.blue = [];
+      chartData.right.timestamps = [];
+      chartData.right.red = [];
+      chartData.right.blue = [];
+      chartData.startTime = performance.now();
+      chartData.simulationTime = 0;
+      chartData.lastUpdateTime = 0;
+      chartData.timeFactor = 1.0 / Math.max(1, ticksPerFrame / 10); // Normalize to default speed
+      
+      // Initialize charts with zero values
+      updateCharts(0, 0, 0, 0, 0);
+    }
+
+    slider.oninput = () => {
+      nPerColor = +slider.value; 
+      countVal.textContent = nPerColor; 
+      initParticles();
+    };
+    
+    autoCB.onchange = () => autoMode = autoCB.checked;
+    
+    speedSlider.oninput = () => {
+      ticksPerFrame = +speedSlider.value;
+      speedValEl.textContent = ticksPerFrame;
+      // Update time factor when speed changes
+      chartData.timeFactor = 1.0 / Math.max(1, ticksPerFrame / 10);
+    };
+    
+    gateSizeSlider.oninput = () => {
+      gateSize = +gateSizeSlider.value;
+      gateSizeValEl.textContent = gateSize;
+    };
+    
+    canvas.addEventListener('mousedown', () => mouseDown = true);
+    window.addEventListener('mouseup', () => mouseDown = false);
+
+    // Utility function for elastic collision with walls
+    function handleWallCollision(p) {
+      let bounced = false;
+      const minSpeed = 0.5;
+      const maxSpeed = 3.0;
+      
+      // Handle horizontal walls (top and bottom)
+      if (p.y < radius) {
+        p.y = radius;
+        p.vy = -p.vy;
+        bounced = true;
+      } else if (p.y > height - radius) {
+        p.y = height - radius;
+        p.vy = -p.vy;
+        bounced = true;
+      }
+      
+      // Handle vertical walls (left and right edges)
+      if (p.x < radius) {
+        p.x = radius;
+        p.vx = -p.vx;
+        bounced = true;
+      } else if (p.x > width - radius) {
+        p.x = width - radius;
+        p.vx = -p.vx;
+        bounced = true;
+      }
+      
+      // Add slight randomization after bounce to prevent periodic orbits
+      if (bounced) {
+        // Small random perturbation to angle while preserving speed
+        const currentSpeed = p.speed;
+        const currentAngle = Math.atan2(p.vy, p.vx);
+        const perturbation = (Math.random() - 0.5) * 0.2; // Small angle change
+        const newAngle = currentAngle + perturbation;
+        
+        p.vx = Math.cos(newAngle) * currentSpeed;
+        p.vy = Math.sin(newAngle) * currentSpeed;
+        
+        // Ensure speed stays within bounds
+        const newSpeed = Math.max(minSpeed, Math.min(p.speed, maxSpeed));
+        p.setSpeed(newSpeed);
+      }
+      
+      return bounced;
+    }
+
+    // Improved barrier collision detection and handling
+    function handleBarrierCollision(p) {
+      // Calculate current gate position
+      const gateY1 = height/2 - gateSize/2;
+      const gateY2 = height/2 + gateSize/2;
+      
+      // Calculate distance to barrier
+      const distToBarrier = Math.abs(p.x - centerX);
+      
+      // Only process collisions if we're close enough to the barrier
+      if (distToBarrier > radius) return false;
+      
+      // Check if particle is within gate area
+      const inGateArea = p.y >= gateY1 && p.y <= gateY2;
+      
+      // If gate is open and particle is in gate area, allow passage
+      if (gateOpen && inGateArea) return false;
+      
+      // Otherwise, handle collision with barrier
+      
+      // First, determine which side of barrier the particle is on
+      const isLeftSide = p.x < centerX;
+      
+      // Place particle at proper distance from barrier (accounting for radius)
+      p.x = isLeftSide ? centerX - radius : centerX + radius;
+      
+      // Reflect velocity vector off the barrier (with damping factor to avoid energy build-up)
+      p.vx = -p.vx * 0.98;
+      
+      // Small randomization to prevent particles from getting trapped in vertical motion
+      const currentSpeed = p.speed;
+      const randomFactor = 1 + (Math.random() - 0.5) * 0.2;
+      
+      // Ensure horizontal component doesn't get too small
+      if (Math.abs(p.vx) < 0.4 * currentSpeed) {
+        p.vx = (isLeftSide ? -1 : 1) * 0.4 * currentSpeed;
+        
+        // Adjust y velocity to maintain approximate speed
+        const speedAfterXAdjustment = Math.hypot(p.vx, p.vy);
+        const speedRatio = currentSpeed / speedAfterXAdjustment;
+        p.vx *= speedRatio;
+        p.vy *= speedRatio;
+      }
+      
+      return true;
+    }
+
+    function simStep() {
+      // Calculate gate dimensions based on current gateSize
+      const gateY1 = height/2 - gateSize/2;
+      const gateY2 = height/2 + gateSize/2;
+    
+      // gate decision
+      if (autoMode) {
+        // Maxwell's demon logic - predict which particles will reach the gate
+        const cx = centerX, cy = height/2;
+        let soonest = null, tMin = Infinity;
+        
+        for (const p of particles) {
+          // Skip particles with zero x velocity
+          if (Math.abs(p.vx) < 0.001) continue;
+          
+          // Only consider particles moving toward the gate
+          const movingTowardsGate = (p.x < centerX && p.vx > 0) || (p.x > centerX && p.vx < 0);
+          if (!movingTowardsGate) continue;
+
+          // Calculate time to reach the gate
+          const t = Math.abs((cx - p.x) / p.vx);
+          if (t >= 0 && t < tMin) {
+            // Predict future y position at gate
+            const yI = p.y + p.vy * t;
+            // Check if it will pass through gate opening
+            if (yI >= gateY1 && yI <= gateY2) { 
+              soonest = p; 
+              tMin = t; 
+            }
+          }
+        }
+        
+        // Open gate if particle meets criteria (red going right, blue going left)
+        gateOpen = soonest ? 
+          (soonest.color === 'red' && soonest.vx > 0) || (soonest.color === 'blue' && soonest.vx < 0)
+          : false;
+      } else {
+        gateOpen = mouseDown;
+      }
+
+      // Process each particle
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        
+        // Store previous position for collision detection
+        const prevX = p.x;
+        const prevY = p.y;
+        
+        // Update position
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        
+        // Handle wall collisions first
+        const wallCollision = handleWallCollision(p);
+        
+        // If no wall collision, check for barrier collision
+        if (!wallCollision) {
+          // Check if particle crosses the barrier in this step
+          const crossingBarrier = (prevX < centerX && p.x >= centerX) || (prevX > centerX && p.x <= centerX);
+          
+          if (crossingBarrier) {
+            // Calculate exact y position at crossing point
+            const fraction = Math.abs((centerX - prevX) / (p.x - prevX));
+            const crossingY = prevY + fraction * (p.y - prevY);
+            
+            // Calculate current gate position
+            const gateY1 = height/2 - gateSize/2;
+            const gateY2 = height/2 + gateSize/2;
+            
+            // Check if crossing through gate area while gate is open
+            const passingThroughGate = crossingY >= gateY1 && crossingY <= gateY2 && gateOpen;
+            
+            if (!passingThroughGate) {
+              // Handle collision with barrier
+              const barrierSide = prevX < centerX ? -1 : 1; // -1 for left side, 1 for right side
+              p.x = centerX + barrierSide * (radius + 0.1); // Position just off the barrier
+              p.vx = -p.vx * 0.98; // Reflect with slight energy loss
+              
+              // Add small random perturbation to avoid particles getting stuck
+              const currentSpeed = p.speed;
+              const angle = Math.atan2(p.vy, p.vx);
+              const perturbation = (Math.random() - 0.5) * 0.3;
+              p.vx = Math.cos(angle + perturbation) * currentSpeed;
+              p.vy = Math.sin(angle + perturbation) * currentSpeed;
+              
+              // Ensure horizontal component is significant to avoid vertical trapping
+              if (Math.abs(p.vx) < 0.4 * currentSpeed) {
+                p.vx = barrierSide * 0.4 * currentSpeed;
+                // Adjust speed to maintain energy
+                p.setSpeed(currentSpeed);
+              }
+            }
+          } else {
+            // Check if particle is very close to barrier
+            handleBarrierCollision(p);
+          }
+        }
+        
+        // Maintain reasonable energy levels
+        const currentSpeed = p.speed;
+        const minSpeed = 0.5;
+        const maxSpeed = 3.0;
+        
+        if (currentSpeed < minSpeed) {
+          p.setSpeed(minSpeed);
+        } else if (currentSpeed > maxSpeed) {
+          p.setSpeed(maxSpeed);
+        }
+      }
+    }
+
+    // Function to update chart data
+    function updateCharts(leftRed, leftBlue, rightRed, rightBlue, timestamp) {
+      // Update simulation time based on real time and speed factor
+      const currentTime = timestamp;
+      
+      // Calculate elapsed time since last update
+      if (chartData.lastUpdateTime > 0) {
+        const realTimeElapsed = currentTime - chartData.lastUpdateTime;
+        // Apply time factor to normalize for simulation speed
+        chartData.simulationTime += realTimeElapsed * chartData.timeFactor * (ticksPerFrame / 10);
+      }
+      
+      // Only update charts periodically to avoid performance issues
+      const updateInterval = 100; // ms between updates
+      if (chartData.left.timestamps.length === 0 || 
+          currentTime - chartData.lastUpdateTime >= updateInterval) {
+
+        chartData.lastUpdateTime = currentTime;
+        
+        // Add normalized simulation time
+        const simTimeSeconds = chartData.simulationTime / 1000;
+        chartData.left.timestamps.push(simTimeSeconds);
+        chartData.right.timestamps.push(simTimeSeconds);
+        
+        // Add data points
+        chartData.left.red.push(leftRed);
+        chartData.left.blue.push(leftBlue);
+        chartData.right.red.push(rightRed);
+        chartData.right.blue.push(rightBlue);
+        
+        // Limit data points if needed
+        if (chartData.left.timestamps.length > maxDataPoints) {
+          chartData.left.timestamps.shift();
+          chartData.left.red.shift();
+          chartData.left.blue.shift();
+          chartData.right.timestamps.shift();
+          chartData.right.red.shift();
+          chartData.right.blue.shift();
+        }
+        
+        // Update charts if they're visible
+        if (showChartsCB.checked) {
+          // Set x-axis range to show entire simulation time
+          const timeRange = {
+            min: 0,
+            max: Math.max(10, simTimeSeconds) // At least 10 seconds shown
+          };
+          
+          // Update chart configurations
+          leftChart.options.scales.x.min = timeRange.min;
+          leftChart.options.scales.x.max = timeRange.max;
+          rightChart.options.scales.x.min = timeRange.min;
+          rightChart.options.scales.x.max = timeRange.max;
+          
+          // Update data
+          leftChart.data.labels = chartData.left.timestamps;
+          leftChart.data.datasets[0].data = chartData.left.red;
+          leftChart.data.datasets[1].data = chartData.left.blue;
+          
+          rightChart.data.labels = chartData.right.timestamps;
+          rightChart.data.datasets[0].data = chartData.right.red;
+          rightChart.data.datasets[1].data = chartData.right.blue;
+          
+          // Update both charts
+          leftChart.update();
+          rightChart.update();
+        }
+      }
+    }
+
+    function draw() {
+      // Calculate current gate position
+      const gateY1 = height/2 - gateSize/2;
+      const gateY2 = height/2 + gateSize/2;
+    
+      // Clear the entire canvas before drawing the new frame
+      ctx.clearRect(0, 0, width, height);
+      
+      // Draw the center barrier
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(centerX, 0);
+      ctx.lineTo(centerX, gateY1);
+      ctx.moveTo(centerX, gateY2);
+      ctx.lineTo(centerX, height);
+      ctx.stroke();
+      
+      // Draw the gate if closed
+      if (!gateOpen) { 
+        ctx.beginPath(); 
+        ctx.moveTo(centerX, gateY1); 
+        ctx.lineTo(centerX, gateY2); 
+        ctx.stroke(); 
+      } else {
+        // Visualize open gate with different color
+        ctx.strokeStyle = '#333';
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(centerX, gateY1);
+        ctx.lineTo(centerX, gateY2);
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset line dash
+      }
+      
+      // Count particles on each side
+      let leftRed = 0, leftBlue = 0, rightRed = 0, rightBlue = 0;
+      
+      // Draw all particles
+      particles.forEach(p => { 
+        ctx.beginPath(); 
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); 
+        ctx.fillStyle = p.color; 
+        ctx.fill();
+        
+        // Count particles by side and color
+        if (p.x < centerX) {
+          if (p.color === 'red') leftRed++;
+          else leftBlue++;
+        } else {
+          if (p.color === 'red') rightRed++;
+          else rightBlue++;
+        }
+      });
+      
+      // Update particle count in the DOM
+      leftRedEl.textContent = leftRed;
+      leftBlueEl.textContent = leftBlue;
+      rightRedEl.textContent = rightRed;
+      rightBlueEl.textContent = rightBlue;
+      
+      // Update charts
+      updateCharts(leftRed, leftBlue, rightRed, rightBlue, performance.now());
+    }
+
+    // Animation function with consistent physics and rendering
+    function animate() {
+      // Run physics simulation steps multiple times per frame
+      const steps = Math.min(ticksPerFrame, 100); // Cap steps to prevent browser hanging
+      const scaledDt = dt * (steps > 30 ? 0.5 : 1.0);
+      
+      for (let i = 0; i < steps; i++) {
+        simStep();
+      }
+      
+      // Draw the scene
+      draw();
+      
+      // Continue animation loop
+      requestAnimationFrame(animate);
+    }
+
+    // Initialize and start animation
+    initParticles(); 
+    animate();
+  </script>
+</body>
+</html>

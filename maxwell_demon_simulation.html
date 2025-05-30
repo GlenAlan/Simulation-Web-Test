@@ -1,0 +1,189 @@
+<!-- filepath: c:\\Users\\glenp\\OneDrive\\Documents\\Code\\Simulation-Web-Test\\maxwell_demon_simulation.html -->
+<!DOCTYPE HTML>
+<!--
+	Phantom by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Maxwell's Demon Simulation - Simulations.Science</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+		<script>
+			// Theme toggle script
+			(function() {
+				var theme = 'light'; // Default theme
+				try {
+					var storedTheme = localStorage.getItem('theme');
+					if (storedTheme) {
+						theme = storedTheme;
+					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+						theme = 'dark';
+					}
+				} catch (e) { /* Ignore */ }
+
+				if (theme === 'dark') {
+					document.documentElement.classList.add('dark-mode');
+				}
+			})();
+		</script>
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<link rel="stylesheet" href="assets/css/simulation_styles.css" />
+		<link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<div class="inner">
+							<!-- Logo -->
+								<a href="index.html" class="logo">
+									<span class="symbol"><img src="images/favicon.svg" alt="" /></span><span class="title">Simulations.Science</span>
+								</a>
+							<!-- Nav -->
+								<nav>
+									<ul>
+										<li>
+											<button id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode">
+												<span class="icon solid fa-sun"><span class="label">Light Mode</span></span>
+												<span class="icon solid fa-moon" style="display:none;"><span class="label">Dark Mode</span></span>
+											</button>
+										</li>
+										<li><a href="#menu">Menu</a></li>
+									</ul>
+								</nav>
+						</div>
+					</header>
+
+				<!-- Menu -->
+					<nav id="menu">
+						<h2>Menu</h2>
+						<ul>
+							<li><a href="index.html">Home</a></li>
+							<li><a href="convection_simulation.html">Convection</a></li>
+							<li><a href="conduction_simulation.html">Conduction</a></li>
+							<!-- Add other simulations here -->
+							<li><a href="maxwell_demon_simulation.html">Maxwell's Demon</a></li>
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+						<div class="inner">
+							<h1 id="simulationTitle">Maxwell's Demon Simulation</h1>
+							
+							<div class="simulation-area-wrapper">
+								<div class="sim-controls-panel" id="simulationControlsPanel" role="region" aria-labelledby="simulationControlsPanelLabel">
+									<div class="sim-controls-header">
+										<h3 id="simulationControlsPanelLabel">Controls</h3>
+									</div>
+									<div class="sim-controls-content">
+										<!-- Simulation-specific controls will go here -->
+										<label>Particles per Color: <span id="countVal">100</span>
+										  <input type="range" id="particleCount" min="1" max="500" step="1" value="100">
+										</label>
+										<label>Speed Multiplier: <span id="speedVal">10</span>
+										  <input type="range" id="speedSlider" min="1" max="100" step="1" value="10">
+										</label>
+										<label>Gate Size: <span id="gateSizeVal">100</span>
+										  <input type="range" id="gateSizeSlider" min="20" max="300" step="10" value="100">
+										</label>
+										<label><input type="checkbox" id="autoMode" checked="true"> Auto Mode (Maxwell's Demon)</label>
+										<div style="font-size:0.9em; color: var(--color-text-secondary); margin-top:5px;">(Manual: hold mouse on canvas to open gate)</div>
+									</div>
+								</div>
+
+								<div class="simulation-main-content">
+									<div class="simulation-display-container">
+										<div class="sim-canvas-wrapper">
+											<div class="sim-aspect-ratio-box" style="--aspect-ratio: 2/1;"> <!-- Added aspect ratio box -->
+												<canvas id="simulationCanvas" class="sim-canvas"></canvas> <!-- Removed width/height, added class -->
+											</div>
+											<div id="fpsDisplay" class="sim-fps-display">FPS: 0</div> <!-- Added FPS display -->
+										</div>
+										<div class="sim-info-bar" id="statsBar">
+											<div class="stats-container">
+												<div class="stats-box">
+													<strong>Left:</strong> <span id="leftRed">0</span> Red, <span id="leftBlue">0</span> Blue
+												</div>
+												<div class="stats-box">
+													<strong>Right:</strong> <span id="rightRed">0</span> Red, <span id="rightBlue">0</span> Blue
+												</div>
+											</div>
+											<div class="sim-info-actions"> <!-- Wrapper for buttons -->
+                                                <label for="showCharts" class="sim-icon-button sim-show-charts-label" title="Toggle Charts">
+                                                    <input type="checkbox" id="showCharts" class="visually-hidden-checkbox">
+                                                    <span class="icon solid fa-chart-bar"></span>
+                                                </label>
+                                                <button id="resetSimulationBtn" class="sim-reset-button sim-icon-button" aria-label="Reset Simulation">
+                                                    <span class="icon solid fa-sync-alt"></span>
+                                                </button>
+                                            </div>
+										</div>
+									</div>
+									<div id="charts-container" style="display: none; margin-top:10px; max-width: 800px; margin-left:auto; margin-right:auto;">
+										<div style="display: flex; justify-content: space-around; width:100%;">
+											<div class="chart-box" style="width: 48%; height: 200px; position: relative; background: var(--color-background-secondary); padding: 5px; border-radius: 5px;">
+												<canvas id="leftChart"></canvas>
+											</div>
+											<div class="chart-box" style="width: 48%; height: 200px; position: relative; background: var(--color-background-secondary); padding: 5px; border-radius: 5px;">
+												<canvas id="rightChart"></canvas>
+											</div>
+										</div>
+									</div>
+									<div class="sim-action-buttons-overlay">
+										<button class="sim-fullscreen-toggle" aria-label="Toggle Fullscreen View" aria-expanded="false">
+											<!-- Icon will be managed by simulation_ui.js -->
+										</button>
+										<button class="sim-panel-toggle-button" aria-label="Toggle Controls Panel" aria-expanded="false" aria-controls="simulationControlsPanel">
+											<!-- Icon will be managed by simulation_ui.js -->
+										</button>
+									</div>
+
+									<div class="description-area">
+										<h3>About this Simulation</h3>
+										<p>[DETAILED_DESCRIPTION_OF_THE_SIMULATION]</p>
+										<p><strong>Controls:</strong></p>
+										<ul>
+											<li><strong>Speed:</strong> Adjusts the simulation rate.</li>
+											<!-- Add descriptions for other controls -->
+										</ul>
+										<p>[INTERACTION_INSTRUCTIONS_IF_ANY]</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				<!-- Footer -->
+					<footer id="footer">
+						<div class="inner">
+							<section>
+								<h2>Other stuff</h2>
+								<ul class="icons">
+									<li><a href="https://glen-alan.com/" class="icon solid style2 fa-globe"><span class="label">Dribbble</span></a></li>
+									<li><a href="https://github.com/GlenAlan" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
+								</ul>
+							</section>
+							<ul class="copyright">
+								<li>&copy; Glen Pearce. All rights reserved</li><li>Web template from: <a href="http://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+			<script src="assets/js/simulation_ui.js"></script> <!-- Generic UI handler -->
+			<script src="assets/js/maxwell_demon_core.js" defer></script> <!-- Simulation specific logic -->
+	</body>
+</html>

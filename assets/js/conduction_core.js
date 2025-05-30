@@ -13,6 +13,11 @@ const ampVal = document.getElementById('heatAmpVal');
 const energyVal = document.getElementById('energyVal');
 // const fpsDisplay  = document.getElementById('fpsDisplay'); // Kept for reference, but not used by this core script
 
+// Simulation constants
+const MIN_SPACING = 1.0; // Minimum spacing for particles
+const PARTICLE_RADIUS_SCALE_FACTOR = 6.0; // Determines particle size relative to spacing
+const MARGIN = 25; // Default margin in pixels
+
 // Initial simulation parameters from HTML (if elements exist)
 let timeScale = timeSlider ? parseFloat(timeSlider.value) : 25;
 let heatRadius = radiusSlider ? parseFloat(radiusSlider.value) : 50; // Original was 30, using HTML default
@@ -36,14 +41,18 @@ const REFERENCE_UPDATES_PER_SECOND = 60.0;
 
 // Particle class
 class Particle {
-    constructor(x0, y0) {
+    constructor(x0, y0, grid_i, grid_j) { // Added grid_i, grid_j
         this.x0 = x0; this.y0 = y0; // Initial rest position
         this.x = x0; this.y = y0;   // Current position
         this.vx = 0; this.vy = 0;   // Velocity
         this.smAmp = 0;             // Smoothed amplitude for color
-        this.neighbors = []; // Stores { index: neighbor_index, rest: rest_length }
+        this.neighbors = []; // Stores { index: neighbor_index, rest: rest_length, isDiagonal: boolean }
+        this.grid_i = grid_i; // Store grid column index
+        this.grid_j = grid_j; // Store grid row index
     }
-    addNeighbor(neighbor_index, rest) { this.neighbors.push({ index: neighbor_index, rest }); }
+    addNeighbor(neighbor_index, rest, isDiagonal) { // Added isDiagonal
+        this.neighbors.push({ index: neighbor_index, rest, isDiagonal });
+    }
     computeAmp() {
         const dx = this.x - this.x0, dy = this.y - this.y0;
         return Math.hypot(dx, dy);
@@ -53,51 +62,122 @@ class Particle {
 const particles = [];
 let offsetX, offsetY; // Will be calculated based on canvas size
 
-function initializeParticles() {
-    particles.length = 0; // Clear existing particles if any (for potential resize)
+// Helper function to calculate grid geometry
+function calculateGridGeometry(currentCanvasWidth, currentCanvasHeight) {
+    // cols and rows are global constants (e.g., 20, 10)
+    // MIN_SPACING and MARGIN are global constants
 
-    // Dynamically calculate spacing based on canvas size and grid dimensions
-    // Ensure the grid fits within the canvas, leaving a small margin.
-    const margin = 25; // Margin in pixels
-    const availableWidth = canvasWidth - 2 * margin;
-    const availableHeight = canvasHeight - 2 * margin;
+    let sX, sY;
 
-    // Calculate spacing based on the limiting dimension
-    const spacingX = availableWidth / (cols -1);
-    const spacingY = availableHeight / (rows-1);
-    spacing = Math.min(spacingX, spacingY);
-    diag = spacing * Math.SQRT2; // Recalculate diag based on new spacing
+    // Calculate spacing based on X dimension
+    // Ensure there's at least (cols - 1) * MIN_SPACING width for the grid itself, plus margins
+    if (cols > 1) {
+        if (currentCanvasWidth >= (2 * MARGIN) + ((cols - 1) * MIN_SPACING)) {
+            sX = (currentCanvasWidth - (2 * MARGIN)) / (cols - 1);
+        } else { // Not enough space for margins, calculate spacing based on full width
+            sX = currentCanvasWidth / (cols - 1);
+        }
+    } else { // Single column or invalid cols
+        sX = currentCanvasWidth; // Effectively, the "cell" is the full width
+    }
+
+    // Calculate spacing based on Y dimension
+    if (rows > 1) {
+        if (currentCanvasHeight >= (2 * MARGIN) + ((rows - 1) * MIN_SPACING)) {
+            sY = (currentCanvasHeight - (2 * MARGIN)) / (rows - 1);
+        } else { // Not enough space for margins, calculate spacing based on full height
+            sY = currentCanvasHeight / (rows - 1);
+        }
+    } else { // Single row or invalid rows
+        sY = currentCanvasHeight;
+    }
+
+    // Determine the limiting spacing, ensuring it's not less than MIN_SPACING
+    const calculatedNewSpacing = (cols <= 1 || rows <= 1) ? Math.max(sX, sY) : Math.min(sX, sY); // if 1 col/row, take the larger dim as spacing
+    const finalSpacing = Math.max(MIN_SPACING, calculatedNewSpacing);
+    
+    const finalDiag = finalSpacing * Math.SQRT2;
     
     // Calculate offsets to center the grid
-    offsetX = (canvasWidth - (cols - 1) * spacing) / 2;
-    offsetY = (canvasHeight - (rows - 1) * spacing) / 2;
+    const gridWidth = (cols > 1) ? (cols - 1) * finalSpacing : 0; // No width if 1 col
+    const gridHeight = (rows > 1) ? (rows - 1) * finalSpacing : 0; // No height if 1 row
+
+    const finalOffsetX = (currentCanvasWidth - gridWidth) / 2;
+    const finalOffsetY = (currentCanvasHeight - gridHeight) / 2;
+
+    return { spacing: finalSpacing, diag: finalDiag, offsetX: finalOffsetX, offsetY: finalOffsetY };
+}
+
+function initializeParticles() {
+    particles.length = 0; // Clear existing particles
+
+    // Calculate initial grid geometry using the helper function
+    // canvasWidth and canvasHeight should be up-to-date before this call
+    const geom = calculateGridGeometry(canvasWidth, canvasHeight);
+    spacing = geom.spacing; // Update global spacing
+    diag = geom.diag;       // Update global diag
+    offsetX = geom.offsetX; // Update global offsetX
+    offsetY = geom.offsetY; // Update global offsetY
 
     for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
-            particles.push(new Particle(offsetX + i * spacing, offsetY + j * spacing));
+            // Pass i and j (grid indices) to Particle constructor
+            particles.push(new Particle(offsetX + i * spacing, offsetY + j * spacing, i, j));
         }
     }
     const idx = (i, j) => i * rows + j;
     
-    particles.forEach((p, particle_idx) => { // Current particle's own index in the particles array
-        const current_col = Math.floor(particle_idx / rows);
-        const current_row = particle_idx % rows;
-
+    particles.forEach((p) => { // Use p.grid_i and p.grid_j directly
         for (let dy = -1; dy <= 1; dy++) {      // Iterate through y-offsets (-1, 0, 1)
             for (let dx = -1; dx <= 1; dx++) {  // Iterate through x-offsets (-1, 0, 1)
                 if (dx === 0 && dy === 0) continue; // Skip self
 
-                const neighbor_col = current_col + dx;
-                const neighbor_row = current_row + dy;
+                const neighbor_col = p.grid_i + dx; // Use p.grid_i
+                const neighbor_row = p.grid_j + dy; // Use p.grid_j
 
                 if (neighbor_col >= 0 && neighbor_col < cols && neighbor_row >= 0 && neighbor_row < rows) {
                     const neighbor_actual_index = idx(neighbor_col, neighbor_row);
+                    const isDiagonal = (dx !== 0 && dy !== 0);
                     // Determine rest length: 'diag' for diagonal, 'spacing' for orthogonal
-                    const rest = (dx !== 0 && dy !== 0) ? diag : spacing;
-                    p.addNeighbor(neighbor_actual_index, rest);
+                    const rest = isDiagonal ? diag : spacing;
+                    p.addNeighbor(neighbor_actual_index, rest, isDiagonal); // Pass isDiagonal
                 }
             }
         }
+    });
+}
+
+// New function to adapt particles to canvas resize
+function adaptParticlesToResize(oldSpacing, newSpacing, newDiag, newOffsetX, newOffsetY) {
+    if (oldSpacing <= 0 || newSpacing <= 0) return; // Avoid division by zero or invalid scaling
+
+    const scaleFactor = newSpacing / oldSpacing;
+
+    particles.forEach(p => {
+        // Calculate displacement from old rest position
+        const dx_relative = p.x - p.x0;
+        const dy_relative = p.y - p.y0;
+
+        // Update rest position (x0, y0) based on grid indices and new geometry
+        p.x0 = newOffsetX + p.grid_i * newSpacing;
+        p.y0 = newOffsetY + p.grid_j * newSpacing;
+
+        // Scale the displacement and apply to new rest position
+        p.x = p.x0 + dx_relative * scaleFactor;
+        p.y = p.y0 + dy_relative * scaleFactor;
+
+        // Scale velocities
+        p.vx *= scaleFactor;
+        p.vy *= scaleFactor;
+
+        // Update rest lengths for neighbors
+        p.neighbors.forEach(neighbor => {
+            if (neighbor.isDiagonal) {
+                neighbor.rest = newDiag;
+            } else {
+                neighbor.rest = newSpacing;
+            }
+        });
     });
 }
 
@@ -284,6 +364,7 @@ function render() {
     });
 
     // Draw particles
+    const particleDrawRadius = Math.max(1.0, spacing / PARTICLE_RADIUS_SCALE_FACTOR); // Dynamic particle radius
     particles.forEach(p => {
         const amp = p.computeAmp();
         p.smAmp = colorSmooth * p.smAmp + (1 - colorSmooth) * amp; // Smooth the amplitude for color
@@ -295,7 +376,7 @@ function render() {
         
         ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2); // Particle radius of 5
+        ctx.arc(p.x, p.y, particleDrawRadius, 0, Math.PI * 2); // Use dynamic particle radius
         ctx.fill();
     });
 
@@ -366,16 +447,34 @@ function animate(timestamp) {
     // Update canvas resolution if it changed
     // Check against the canvas element's actual clientWidth/clientHeight
     if (canvas.clientWidth !== canvasWidth || canvas.clientHeight !== canvasHeight) {
+        const oldSpacing = spacing; // Capture old global spacing
+
         canvasWidth = canvas.clientWidth;   // Update script's tracked width
         canvasHeight = canvas.clientHeight; // Update script's tracked height
         canvas.width = canvasWidth;         // Set drawing buffer width to match display
         canvas.height = canvasHeight;       // Set drawing buffer height to match display
         
-        // Re-initialize particles and forces if dimensions changed,
-        // as their positions depend on canvasWidth/Height.
-        if (particles.length > 0) { // Avoid re-init if particles weren't set up yet
-            initializeParticles(); 
-            forces = computeForces(); // Update forces after re-initialization
+        if (particles.length > 0) {
+            // Recalculate new grid geometry using the helper function
+            const newGeom = calculateGridGeometry(canvasWidth, canvasHeight);
+
+            // Adapt existing particles to the new geometry.
+            // oldSpacing is guaranteed > 0 (from MIN_SPACING in initializeParticles/previous resize)
+            // newGeom.spacing is guaranteed > 0 (from MIN_SPACING in calculateGridGeometry)
+            // The internal check in adaptParticlesToResize (oldSpacing > 0 && newSpacing > 0) will pass.
+            adaptParticlesToResize(oldSpacing, newGeom.spacing, newGeom.diag, newGeom.offsetX, newGeom.offsetY);
+            
+            // Update global simulation parameters
+            spacing = newGeom.spacing;
+            diag = newGeom.diag;
+            offsetX = newGeom.offsetX;
+            offsetY = newGeom.offsetY;
+            
+            forces = computeForces(); // Recompute forces with new positions and rest lengths
+        } else {
+            // If there are no particles (e.g., initial setup failed or was cleared), re-initialize.
+            initializeParticles(); // This will use the new canvasWidth/Height.
+            forces = computeForces();
         }
     }
     
@@ -427,7 +526,7 @@ if (document.readyState === "complete" || (document.readyState !== "loading" && 
 }
 
 // Expose a resize function if needed by simulation_ui.js, though ideally
-// simulation_ui.js handles canvas element resizing and this script adapts.
+// simulation_ui.js handles canvas.width/height changes.
 // For this conduction simulation, the particle grid is fixed in terms of cols/rows,
 // but it recenters itself if the canvas dimensions change.
 window.conductionSimulation = {

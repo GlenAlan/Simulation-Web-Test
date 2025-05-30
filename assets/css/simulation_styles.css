@@ -238,13 +238,16 @@ html.dark-mode .sim-panel-close-button-inside {
     box-sizing: border-box; /* Ensures padding/border are included in total width. */
 }
 .sim-aspect-ratio-box {
-    position: relative; width: 100%; height: 0;
-    padding-bottom: calc(100% / (var(--aspect-ratio, 1))); /* Maintains aspect ratio using the padding-bottom trick. */
-    overflow: hidden; border-radius: 4px;
-    background-color: var(--color-bg-subtle);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border: 1px solid var(--color-border);
+    position: relative;
+    width: 100%;
+    padding-top: calc(100% / (var(--aspect-ratio, 2 / 1))); /* Default aspect ratio */
+    background-color: var(--color-bg-secondary); /* Added for visual debugging if canvas fails */
+    border-radius: var(--border-radius-medium);
+    overflow: hidden; /* Ensures canvas stays within bounds */
 }
+
+/* General canvas scaling (re-stated for clarity or overriding, ensure it\'s intended). */
+/* This rule is general and not specific to fullscreen, ensure its placement and necessity. */
 .sim-canvas {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; /* Fills the aspect-ratio box. */
     display: block; /* Removes extra space below inline elements. */
@@ -594,4 +597,44 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
         opacity: 0; /* Ensure it's hidden */
         visibility: hidden; /* Ensure it's hidden and not focusable */
     }
+}
+
+/* Styles for the info bar in fullscreen mode */
+.sim-info-bar.fullscreen-style {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--color-bg-tertiary, #f0f0f0); /* Use a variable or a default */
+    padding: 8px 15px;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 1005; /* Ensure it's above other fullscreen content but below modals/menus if any */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+html.dark-mode .sim-info-bar.fullscreen-style {
+    background-color: var(--color-bg-tertiary-dark, #282c34); /* Dark mode background */
+    border-top: 1px solid var(--color-border-subtle-dark);
+}
+
+.sim-info-bar.fullscreen-style .sim-info-item,
+.sim-info-bar.fullscreen-style .sim-reset-button {
+    color: var(--color-text-primary); /* Ensure text is visible */
+}
+
+html.dark-mode .sim-info-bar.fullscreen-style .sim-info-item,
+html.dark-mode .sim-info-bar.fullscreen-style .sim-reset-button {
+    color: var(--color-text-primary-dark); /* Ensure text is visible in dark mode */
+}
+
+/* Ensure the reset button in fullscreen info bar maintains its icon color */
+.sim-info-bar.fullscreen-style .sim-reset-button .icon {
+    color: var(--color-accent); /* Or specific color for icons */
+}
+
+html.dark-mode .sim-info-bar.fullscreen-style .sim-reset-button .icon {
+    color: var(--color-accent-dark); /* Or specific color for icons in dark mode */
 }

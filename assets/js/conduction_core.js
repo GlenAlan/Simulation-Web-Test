@@ -11,6 +11,8 @@ const radiusVal = document.getElementById('heatSizeVal'); // Renamed from sizeVa
 const heatAmpSlider = document.getElementById('heatAmp'); // Renamed from ampSlider
 const ampVal = document.getElementById('heatAmpVal');
 const energyVal = document.getElementById('energyVal');
+const springConstantSlider = document.getElementById('springConstant');
+const springConstantVal = document.getElementById('springConstantVal');
 // const fpsDisplay  = document.getElementById('fpsDisplay'); // Kept for reference, but not used by this core script
 
 // Simulation constants
@@ -20,8 +22,9 @@ const MARGIN = 25; // Default margin in pixels
 
 // Initial simulation parameters from HTML (if elements exist)
 let timeScale = timeSlider ? parseFloat(timeSlider.value) : 25;
-let heatRadius = radiusSlider ? parseFloat(radiusSlider.value) : 50; // Original was 30, using HTML default
+let heatRadius = radiusSlider ? parseFloat(radiusSlider.value) : 25; // Default to 25
 let heatAmp = heatAmpSlider ? parseFloat(heatAmpSlider.value) : 1;
+let kN = springConstantSlider ? parseFloat(springConstantSlider.value) : 0.2; // Spring constant
 
 // Particle and Grid Setup (largely from original script)
 const cols = 20, rows = 10; // Fixed grid size for now
@@ -31,7 +34,8 @@ let canvasWidth = 800, canvasHeight = 400; // Default, will be updated
 
 // Physics constants
 const baseDt = 0.005;     // Base physics timestep for one sub-step
-const kN = 0.2, kR = 0.5; // Spring constant, Restoring force constant
+const kR = 0.5; // Restoring force constant
+// kN is now a let variable, initialized above
 const colorSmooth = 0.97; // Smoothing factor for particle color based on amplitude
 
 // Frame-rate independent timing
@@ -314,6 +318,15 @@ if (heatAmpSlider && ampVal) {
         ampVal.textContent = heatAmp.toFixed(1);
     };
     ampVal.textContent = parseFloat(heatAmpSlider.value).toFixed(1); // Initialize display
+}
+
+if (springConstantSlider && springConstantVal) {
+    springConstantSlider.oninput = () => {
+        kN = parseFloat(springConstantSlider.value);
+        springConstantVal.textContent = kN.toFixed(2);
+        forces = computeForces(); // Recompute forces when kN changes
+    };
+    springConstantVal.textContent = parseFloat(springConstantSlider.value).toFixed(2); // Initialize display
 }
 
 // This function performs one discrete step of the physics simulation using baseDt

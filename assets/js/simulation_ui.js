@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const simCanvas = simPageInner.querySelector('#simulationCanvas');
     const actionButtonsOverlay = document.querySelector('.sim-action-buttons-overlay');
     const simControlsHeader = controlsPanel ? controlsPanel.querySelector('.sim-controls-header') : null;
+    const simInfoBar = simPageInner.querySelector('.sim-info-bar'); // Get the info bar
     let panelCloseBtnInside; // Internal close button for the panel
 
     // Simulation size checkboxes
@@ -142,9 +143,13 @@ document.addEventListener('DOMContentLoaded', () => {
             body.classList.toggle('sim-fullscreen-active');
             
             fullscreenToggleBtn.setAttribute('aria-expanded', isEnteringFullscreen.toString());
+            // Toggle a class on simInfoBar for fullscreen-specific styling
+            if (simInfoBar) {
+                simInfoBar.classList.toggle('fullscreen-style', isEnteringFullscreen);
+            }
             updateButtonIcons();
             updatePositions(); 
-            window.dispatchEvent(new Event('resize'));
+            window.dispatchEvent(new Event('resize')); // Ensure canvas resizes
         });
     }
     
@@ -160,14 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (body.classList.contains('sim-fullscreen-active')) {
-                body.classList.remove('sim-fullscreen-active');
+                // Simulate a click on the fullscreen button to exit fullscreen
                 if (fullscreenToggleBtn) {
-                    fullscreenToggleBtn.setAttribute('aria-expanded', 'false');
+                    fullscreenToggleBtn.click();
                 }
-                updateButtonIcons();
-                updatePositions();
-                window.dispatchEvent(new Event('resize'));
             } else if (controlsPanel && controlsPanel.classList.contains('panel-open')) {
+                // If panel is open and not in fullscreen, close the panel
                 closeSettingsPanel();
             }
         }

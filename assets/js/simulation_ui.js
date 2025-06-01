@@ -24,10 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenIconContract = '<span class="icon solid fa-compress"><span class="label">Exit Fullscreen</span></span>';
 
     function createInternalCloseButton() {
-        if (controlsPanel && simControlsHeader && !simControlsHeader.querySelector('.sim-panel-close-button-inside')) {
+        if (controlsPanel && simControlsHeader && !simControlsHeader.querySelector('.sim-panel-close-button-insIDE')) {
             panelCloseBtnInside = document.createElement('button');
             panelCloseBtnInside.innerHTML = closePanelIcon;
-            panelCloseBtnInside.className = 'sim-panel-close-button-inside'; // Will be styled by CSS to match others
+            panelCloseBtnInside.className = 'sim-panel-close-button-insIDE'; // Will be styled by CSS to match others
             panelCloseBtnInside.setAttribute('aria-label', 'Close Settings');
             simControlsHeader.appendChild(panelCloseBtnInside);
 

@@ -434,7 +434,7 @@ function animate(timestamp) {
     frameCount++;
     if (timestamp - lastFpsUpdate > 1000) { // Update FPS display every second
         const fps = frameCount / ((timestamp - lastFpsUpdate) / 1000);
-        if (fpsDisplay) fpsDisplay.textContent = `FPS: ${fps.toFixed(1)}`;
+        if (fpsDisplay) fpsDisplay.textContent = `FPS: ${fps.toFixed(0)}`;
         frameCount = 0;
         lastFpsUpdate = timestamp;
     }

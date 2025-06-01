@@ -103,7 +103,7 @@ const chartData = {
     left: { timestamps: [], red: [], blue: [] },
     right: { timestamps: [], red: [], blue: [] },
     startTime: 0, 
-    lastUpdateSimTime: 0, // Changed from lastUpdateTime to use simulation time
+    lastUpdateSimTime: 0 // Changed from lastUpdateTime to use simulation time
 };
 
 // --- Core Simulation Classes and Functions ---
@@ -318,12 +318,13 @@ function runSinglePhysicsStep(dtArgument) {
 }
 
 function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, forceUpdate = false) {
-    if (!leftChart || !rightChart || !showChartsCheckbox || (!showChartsCheckbox.checked && !forceUpdate)) {
+    // Ensure essential chart-related elements exist before proceeding.
+    if (!leftChart || !rightChart || !showChartsCheckbox) {
         return;
     }
     const simTimeSeconds = currentSimulationTime;
 
-    const updateIntervalSteps = 100; // Update every 100 physics steps
+    const updateIntervalSteps = 1000; // Update every 1000 physics steps
     if (forceUpdate || chartData.left.timestamps.length === 0 ||
         physicsStepCounter - lastChartUpdateStep >= updateIntervalSteps) {
 
@@ -346,6 +347,7 @@ function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, for
             chartData.right.blue.shift();
         }
 
+        // Conditional rendering: only update Chart.js instances if charts are visible or update is forced.
         if (showChartsCheckbox.checked || forceUpdate) { 
             const timeRange = {
                 min: 0,
@@ -353,21 +355,25 @@ function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, for
             };
 
             [leftChart, rightChart].forEach(chart => {
-                chart.options.scales.x.min = timeRange.min;
-                chart.options.scales.x.max = timeRange.max;
+                if (chart && chart.options && chart.options.scales && chart.options.scales.x) {
+                    chart.options.scales.x.min = timeRange.min;
+                    chart.options.scales.x.max = timeRange.max;
+                }
             });
 
-            leftChart.data.labels = chartData.left.timestamps;
-            leftChart.data.datasets[0].data = chartData.left.red;
-            leftChart.data.datasets[1].data = chartData.left.blue;
+            if (leftChart && leftChart.data) {
+                leftChart.data.labels = chartData.left.timestamps;
+                leftChart.data.datasets[0].data = chartData.left.red;
+                leftChart.data.datasets[1].data = chartData.left.blue;
+                leftChart.update('none'); 
+            }
             
-            rightChart.data.labels = chartData.right.timestamps;
-            rightChart.data.datasets[0].data = chartData.right.red;
-            rightChart.data.datasets[1].data = chartData.right.blue;
-            
-            // Colors are updated by updateChartColors, called on theme change or init
-            leftChart.update('none'); 
-            rightChart.update('none');
+            if (rightChart && rightChart.data) {
+                rightChart.data.labels = chartData.right.timestamps;
+                rightChart.data.datasets[0].data = chartData.right.red;
+                rightChart.data.datasets[1].data = chartData.right.blue;
+                rightChart.update('none');
+            }
         }
     }
 }
@@ -432,9 +438,9 @@ function renderSimulation() {
     if (rightRedEl) rightRedEl.textContent = rightRed;
     if (rightBlueEl) rightBlueEl.textContent = rightBlue;
 
-    if (showChartsCheckbox && showChartsCheckbox.checked) {
-        updateCharts(leftRed, leftBlue, rightRed, rightBlue, performance.now());
-    }
+    // Always call updateCharts to accumulate data.
+    // The updateCharts function itself will decide whether to render based on visibility.
+    updateCharts(leftRed, leftBlue, rightRed, rightBlue, performance.now());
 }
 
 // --- Main Animation Loop & Setup ---
@@ -512,7 +518,7 @@ function setupCharts() {
                     color: chartTextColor, // Set by updateChartColors
                     maxTicksLimit: 10,
                     callback: function(value) {
-                        return value.toFixed(1);
+                        return (value).toFixed(0);
                     }
                 },
                 grid: { color: chartGridColor } // Set by updateChartColors

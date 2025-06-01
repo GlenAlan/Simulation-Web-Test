@@ -517,26 +517,29 @@ body.sim-fullscreen-active .simulation-main-content {
     width: 100%; /* Occupies full available width from parent flex container. */
     height: 100%; /* Occupies full available height. */
     display: flex;
-    align-items: center; /* Vertically centers the simulation display container. */
-    justify-content: center; /* Horizontally centers the simulation display container. */
+    flex-direction: column; /* ADDED: Stack children (canvas container, charts) vertically */
+    align-items: center; /* Center children horizontally */
+    justify-content: center; /* Center the block of children vertically */
     /* Padding provides space around the simulation, e.g., for action buttons. */
     padding-top: calc(1vmin + 25px); /* Top padding for overlay buttons and breathing room. */
     padding-right: 1vmin;  /* Minimal right padding. */
-    padding-bottom: 1vmin; /* Minimal bottom padding. */
+    padding-bottom: 50px; /* INCREASED: Make space for fixed bottom info-bar */
     padding-left: 1vmin;   /* Minimal left padding. */
     box-sizing: border-box;
     position: relative; /* Context for absolutely positioned children if any (though action buttons are typically fixed by JS in fullscreen). */
+    overflow-y: auto; /* ADDED: Allow scrolling if canvas + charts are too tall */
 }
 
 /* Simulation display container adjustments for fullscreen. */
 body.sim-fullscreen-active .simulation-display-container {
     padding: 0; /* Padding is now handled by .simulation-main-content. */
     box-sizing: border-box;
-    width: 100%;
-    height: 100%;
+    width: 100%; /* Will be centered by parent's align-items. Max-width is on canvas wrapper or aspect box. */
+    height: auto; /* CHANGED: Let content (canvas) define height */
     display: flex; /* Centers the canvas wrapper. */
     align-items: center;
     justify-content: center;
+    flex-shrink: 0; /* ADDED: Prevent shrinking when charts are present */
 }
 
 /* Canvas wrapper adjustments for fullscreen. */
@@ -570,7 +573,7 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
        from the general .sim-aspect-ratio-box rule. */
 }
 
-/* General canvas scaling (re-stated for clarity or overriding, ensure it's intended). */
+/* General canvas scaling (re-stated for clarity or overriding, ensure it\'s intended). */
 /* This rule is general and not specific to fullscreen, ensure its placement and necessity. */
 .sim-canvas {
     display: block; /* Removes extra space if it were inline. */
@@ -621,9 +624,28 @@ html.dark-mode .sim-info-bar.fullscreen-style {
     border-top: 1px solid var(--color-border-subtle-dark);
 }
 
-.sim-info-bar.fullscreen-style .sim-info-item,
-.sim-info-bar.fullscreen-style .sim-reset-button {
-    color: var(--color-text-primary); /* Ensure text is visible */
+/* Hide the default (non-fullscreen) sim-info-bar when in fullscreen, as .fullscreen-style one is used */
+body.sim-fullscreen-active .simulation-display-container > .sim-info-bar:not(.fullscreen-style) {
+    display: none !important;
+}
+
+/* Charts container in fullscreen */
+body.sim-fullscreen-active #charts-container {
+    /* display property is handled by JS (block/none) based on checkbox. */
+    /* These styles apply when it's made visible by JS. */
+    width: 100%; /* Takes width from parent's flex column context */
+    max-width: 800px; /* Respects original max-width, will be centered by parent's align-items */
+    margin-top: 10px; /* Spacing from the simulation display container above */
+    /* margin-bottom is implicitly handled by parent's padding-bottom or if it's the last item */
+    flex-shrink: 0; /* Its height is determined by its content (.chart-box) */
+}
+
+/* Styling for the individual chart boxes within the container in fullscreen */
+body.sim-fullscreen-active #charts-container .chart-box {
+    /* Inline styles already define width: 48%, position, padding, border-radius. */
+    /* Override height and background for fullscreen consistency. */
+    height: 180px; 
+    background-color: var(--color-bg-alt); 
 }
 
 html.dark-mode .sim-info-bar.fullscreen-style .sim-info-item,

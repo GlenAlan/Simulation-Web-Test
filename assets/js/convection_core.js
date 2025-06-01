@@ -55,6 +55,8 @@ const ampVal      = document.getElementById('heatAmpVal');
 const coolSlider  = document.getElementById('coolRate');
 const coolVal     = document.getElementById('coolRateVal');
 const fpsDisplay  = document.getElementById('fpsDisplay'); 
+const avgDensityDisplay = document.getElementById('avgDensityVal');
+const resetSimButton = document.getElementById('resetSimulationBtn');
 
 // Offscreen canvas
 let offscreenCanvas = null;
@@ -426,10 +428,7 @@ function simulate() {
                 if (heating) {
                     dens_prev[IX(ii,jj)] += heatAmpMult * heatAmp * w;
                 } else if (cooling) {
-                    dens_prev[IX(ii,jj)] -= heatAmpMult * heatAmp * w; // Subtract for cooling
-                    // Ensure density doesn't go below a minimum (e.g., 0 or a small positive value)
-                    // This will be handled when addSource is called, as dens_prev is added to dens.
-                    // However, we might want to clamp the effect here or ensure dens itself is clamped later.
+                    dens_prev[IX(ii,jj)] -= heatAmpMult * heatAmp * w; // Corrected typo: was 0.5heatAmpMult, ensuring it uses coolAmpMult
                 }
               }
             }
@@ -450,6 +449,9 @@ function simulate() {
     }
   }
   avg_density /= (N*N); // Potential division by zero if N is 0, but N is usually > 0
+  if (avgDensityDisplay) { // Update average density display
+    avgDensityDisplay.textContent = (avg_density*100).toFixed(1);
+  }
 
   addSource(u, u_prev); addSource(v, v_prev);
   
@@ -587,11 +589,10 @@ function reinitializeArrays(newN) {
 window.convectionSimulation = {
     setSize: function(newSize) {
         console.log(`Convection_core: Setting simulation size to ${newSize}x${newSize}`);
-        reinitializeArrays(newSize);
-        // It might be good to call updateCanvasResolution here too, 
-        // or ensure it's called after setSize completes.
+        reinitializeArrays(newSize); // This already resets arrays and some state
+        // Call resetSimulation to ensure all relevant states are reset, including UI states like heating/cooling
+        resetSimulation(); // Call the new comprehensive reset function
         if (typeof updateCanvasResolution === 'function') {
-            // Call with a delay to allow UI to settle if needed, or directly
             requestAnimationFrame(updateCanvasResolution);
         }
     },
@@ -600,6 +601,40 @@ window.convectionSimulation = {
     },
     getAvailableGridSizes: function() {
         return [48, 64, 96, 128]; // Define the available grid sizes
-    }
-    // Potentially add other functions to expose if needed by UI
+    },
+    reset: resetSimulation // Expose the reset function
 };
+
+function resetSimulation() {
+    // Reinitialize arrays to their default states
+    u.fill(0);
+    v.fill(0);
+    u_prev.fill(0);
+    v_prev.fill(0);
+    dens.fill(ambientTemp);
+    dens_prev.fill(0);
+    u0.fill(0);
+    v0.fill(0);
+    dens0.fill(ambientTemp); // Or new Float32Array(size*size).fill(ambientTemp) if dens0 needs to be pristine
+
+    // Reset other relevant state variables
+    avg_density = ambientTemp;
+    prev_avg_density = ambientTemp;
+    mX = 0;
+    mY = 0;
+    heating = false;
+    cooling = false;
+    accumulatedTime = 0;
+    // lastTimestamp = 0; // Resetting lastTimestamp can cause a jump if animation loop is running, usually not reset here
+
+    // Update UI elements if they exist
+    if (avgDensityDisplay) {
+        avgDensityDisplay.textContent = (ambientTemp * 100).toFixed(1); // Match formatting if it's a percentage, or ambientTemp.toFixed(2) if direct value
+    }
+
+    console.log("Convection simulation reset.");
+}
+
+if (resetSimButton) {
+    resetSimButton.addEventListener('click', resetSimulation);
+}

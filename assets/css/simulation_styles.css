@@ -241,8 +241,9 @@ html.dark-mode .sim-panel-close-button-inside {
     position: relative;
     width: 100%;
     padding-top: calc(100% / (var(--aspect-ratio, 2 / 1))); /* Default aspect ratio */
-    background-color: var(--color-bg-secondary); /* Added for visual debugging if canvas fails */
+    background-color: var(--color-bg-sub); /* Added for visual debugging if canvas fails */
     border-radius: var(--border-radius-medium);
+    border: 1px solid var(--color-border);
     overflow: hidden; /* Ensures canvas stays within bounds */
 }
 

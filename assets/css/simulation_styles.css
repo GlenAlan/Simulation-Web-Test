@@ -527,7 +527,7 @@ body.sim-fullscreen-active .simulation-main-content {
     padding-left: 1vmin;   /* Minimal left padding. */
     box-sizing: border-box;
     position: relative; /* Context for absolutely positioned children if any (though action buttons are typically fixed by JS in fullscreen). */
-    overflow-y: auto; /* ADDED: Allow scrolling if canvas + charts are too tall */
+    overflow: hidden; /* CHANGED: Prevent scrollbars in fullscreen mode */
 }
 
 /* Simulation display container adjustments for fullscreen. */

@@ -487,11 +487,7 @@ function reinitializeArrays(newN) {
         if (offscreenCtx) offscreenImageData = offscreenCtx.createImageData(N, N);
     }
     // Potentially reset mouse interaction states if they depend on cell size
-    mX = 0; mY = 0; 
-
-    // It might be good to call updateCanvasResolution here too, 
-    // or ensure it's called after setSize completes.
-    // For now, simulation_ui.js calls updatePositions which should trigger it.
+    mX = 0; mY = 0;
 }
 
 // Expose setSize to be called from simulation_ui.js
@@ -499,8 +495,18 @@ window.convectionSimulation = {
     setSize: function(newSize) {
         console.log(`Convection_core: Setting simulation size to ${newSize}x${newSize}`);
         reinitializeArrays(newSize);
-        // Potentially trigger a redraw or reset of the simulation loop if needed
-        // For now, the existing loop should pick up the new N value.
-        // A full reset might involve cancelling the current animation frame and restarting.
+        // It might be good to call updateCanvasResolution here too, 
+        // or ensure it's called after setSize completes.
+        if (typeof updateCanvasResolution === 'function') {
+            // Call with a delay to allow UI to settle if needed, or directly
+            requestAnimationFrame(updateCanvasResolution);
+        }
+    },
+    getCurrentGridSize: function() {
+        return N; // N is the current grid size
+    },
+    getAvailableGridSizes: function() {
+        return [48, 64, 96]; // Define the available grid sizes
     }
+    // Potentially add other functions to expose if needed by UI
 };

@@ -26,8 +26,18 @@ let heatRadius = radiusSlider ? parseFloat(radiusSlider.value) : 25; // Default 
 let heatAmp = heatAmpSlider ? parseFloat(heatAmpSlider.value) : 1;
 let kN = springConstantSlider ? parseFloat(springConstantSlider.value) : 0.2; // Spring constant
 
-// Particle and Grid Setup (largely from original script)
-const cols = 20, rows = 10; // Fixed grid size for now
+// Particle and Grid Setup
+let cols = 20, rows = 10; // Default grid size, now 'let'
+const PREDEFINED_GRID_LAYOUTS = {
+    "default": { cols: 20, rows: 10 },
+    "small": { cols: 10, rows: 5 },
+    "large": { cols: 40, rows: 20 },
+    "wide": { cols: 30, rows: 5 },
+    "square_medium": { cols: 15, rows: 15 },
+    "large_square": { cols: 25, rows: 25 }
+};
+let currentGridLayoutName = "default"; // To keep track of the current layout
+
 let spacing = 30; // Default spacing, will be updated
 let diag = spacing * Math.SQRT2; // Will be updated with spacing
 let canvasWidth = 800, canvasHeight = 400; // Default, will be updated
@@ -545,13 +555,27 @@ if (document.readyState === "complete" || (document.readyState !== "loading" && 
 window.conductionSimulation = {
     // Example: a function to reset the simulation if needed from outside
     reset: () => {
-        initializeParticles();
+        initializeParticles(); // This will use the current global cols and rows
         forces = computeForces(); // Update forces on reset
         // Reset smoothed amplitude for all particles to prevent stale visual state
         particles.forEach(p => p.smAmp = 0);
         if (energyVal) energyVal.textContent = computeEnergy().toFixed(0);
-        console.log("Conduction simulation reset.");
+        console.log(`Conduction simulation reset to grid: ${cols}x${rows}.`);
     },
+    setGridLayout: (layoutName) => {
+        const newLayout = PREDEFINED_GRID_LAYOUTS[layoutName];
+        if (newLayout) {
+            cols = newLayout.cols;
+            rows = newLayout.rows;
+            currentGridLayoutName = layoutName;
+            console.log(`Setting grid layout to ${layoutName}: ${cols}x${rows}`);
+            window.conductionSimulation.reset(); // Reset to apply new grid dimensions
+        } else {
+            console.warn(`Grid layout "${layoutName}" not found.`);
+        }
+    },
+    getCurrentGridLayoutName: () => currentGridLayoutName,
+    getAvailableGridLayouts: () => PREDEFINED_GRID_LAYOUTS
     // The simulation_ui.js script will handle canvas.width/height changes.
     // This script will pick them up in the animate() loop.
 };
@@ -566,5 +590,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- Example: Event listener for a grid layout selector ---
+    // Assuming you add a <select id="gridLayoutSelector"> in your HTML:
+    // UNCOMMENTED AND ADAPTED THE FOLLOWING BLOCK
+    const gridLayoutSelector = document.getElementById('gridLayoutSelector');
+    if (gridLayoutSelector) {
+        // Populate selector options
+        const layouts = window.conductionSimulation.getAvailableGridLayouts();
+        for (const layoutName in layouts) {
+            const option = document.createElement('option');
+            option.value = layoutName;
+            // Make the text more readable, e.g., "Default (20x10)"
+            let prettyLayoutName = layoutName.replace(/_/g, " ");
+            prettyLayoutName = prettyLayoutName.charAt(0).toUpperCase() + prettyLayoutName.slice(1);
+            option.textContent = `${prettyLayoutName} (${layouts[layoutName].cols}x${layouts[layoutName].rows})`;
+            gridLayoutSelector.appendChild(option);
+        }
+        // Set initial value based on the current grid layout name from the simulation core
+        gridLayoutSelector.value = window.conductionSimulation.getCurrentGridLayoutName(); 
+
+        gridLayoutSelector.addEventListener('change', (event) => {
+            if (window.conductionSimulation && typeof window.conductionSimulation.setGridLayout === 'function') {
+                window.conductionSimulation.setGridLayout(event.target.value);
+            }
+        });
+    }
+    // --- End Example ---
 });
 

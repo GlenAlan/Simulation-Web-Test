@@ -94,17 +94,11 @@
                                             <input type="range" id="coolRate" min="0" max="1" step="0.01" value="0.50">
                                         </label>
                                         <div class="sim-control-group">
-                                            <p class="sim-control-group-label">Simulation Size:</p>
-                                            <div class="sim-checkbox-group" role="radiogroup" aria-labelledby="simSizeLabel">
-                                                <label for="simSize48">
-                                                    <input type="checkbox" id="simSize48" name="simSize" value="48" checked> 48x48
-                                                </label>
-                                                <label for="simSize64">
-                                                    <input type="checkbox" id="simSize64" name="simSize" value="64"> 64x64
-                                                </label>
-                                                <label for="simSize96">
-                                                    <input type="checkbox" id="simSize96" name="simSize" value="96"> 96x96
-                                                </label>
+                                            <p class="sim-control-group-label" id="convectionGridSizeLabel">Simulation Size:</p>
+                                            <div class="sim-select-container">
+                                                <select id="convectionGridSizeSelector" aria-labelledby="convectionGridSizeLabel">
+                                                    <!-- Options will be populated by JavaScript -->
+                                                </select>
                                             </div>
                                         </div>
                                     </div>

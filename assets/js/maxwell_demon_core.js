@@ -9,7 +9,8 @@ const speedSlider = document.getElementById('speedSlider');
 const speedValEl = document.getElementById('speedVal');
 const gateSizeSlider = document.getElementById('gateSizeSlider');
 const gateSizeValEl = document.getElementById('gateSizeVal');
-const autoModeCheckbox = document.getElementById('autoMode');
+// const autoModeCheckbox = document.getElementById('autoMode'); // Replaced by demonModeSelector
+const demonModeSelector = document.getElementById('demonModeSelector');
 const showChartsCheckbox = document.getElementById('showCharts');
 const chartsContainer = document.getElementById('charts-container');
 
@@ -27,7 +28,8 @@ const fpsDisplay = document.getElementById('fpsDisplay'); // Added FPS display e
 let nPerColor = particleCountSlider ? +particleCountSlider.value : 100;
 let speedMultiplier = speedSlider ? +speedSlider.value : 10; // Renamed from ticksPerFrame for clarity with new timing
 let gateSize = gateSizeSlider ? +gateSizeSlider.value : 100;
-let autoMode = autoModeCheckbox ? autoModeCheckbox.checked : true;
+// let autoMode = autoModeCheckbox ? autoModeCheckbox.checked : true; // Replaced by demonMode
+let demonMode = demonModeSelector ? demonModeSelector.value : 'automatic'; // 'automatic' or 'manual'
 
 const radius = 5;
 const BASE_DT = 1.0 / 60.0; // Target time step for each physics update (approx 60 FPS)
@@ -45,6 +47,8 @@ let mouseDown = false;
 let lastTimestamp = 0;
 let physicsTimeAccumulator = 0.0; // Accumulator for frame-rate independent physics steps
 let currentSimulationTime = 0.0; // Total elapsed simulation time for charts
+let physicsStepCounter = 0; // Counter for physics steps to control chart sampling
+let lastChartUpdateStep = 0; // Track the last physics step when charts were updated
 
 // FPS calculation
 let frameCount = 0;
@@ -52,7 +56,7 @@ let lastFpsUpdate = 0;
 
 // Chart.js instances and data
 let leftChart, rightChart;
-const maxDataPoints = 1000;
+const maxDataPoints = 10000;
 let chartTextColor = 'var(--color-text-secondary)'; // Default, will be updated
 let chartGridColor = 'var(--color-border)';
 let chartTitleColor = 'var(--color-text-primary)'; // Changed to use --color-text-primary
@@ -99,7 +103,7 @@ const chartData = {
     left: { timestamps: [], red: [], blue: [] },
     right: { timestamps: [], red: [], blue: [] },
     startTime: 0, 
-    lastUpdateTime: 0, 
+    lastUpdateSimTime: 0, // Changed from lastUpdateTime to use simulation time
 };
 
 // --- Core Simulation Classes and Functions ---
@@ -165,19 +169,15 @@ function initializeSimulationState() {
         particles.push(new Particle(x, y, vx, vy, color));
     }
   
-    chartData.left.timestamps = [];
-    chartData.left.red = [];
+    chartData.left.timestamps = [];    chartData.left.red = [];
     chartData.left.blue = [];
     chartData.right.timestamps = [];
     chartData.right.red = [];
-    chartData.right.blue = [];
-    chartData.startTime = performance.now();
-    currentSimulationTime = 0.0; 
-    chartData.lastUpdateTime = 0; 
-
-    if (leftChart && rightChart && showChartsCheckbox && showChartsCheckbox.checked) {
-        updateCharts(0, 0, 0, 0, performance.now(), true); 
-    }
+    chartData.right.blue = [];    chartData.startTime = performance.now();    currentSimulationTime = 0.0; 
+    chartData.lastUpdateSimTime = 0.0; // Reset simulation time tracker for chart updates
+    physicsStepCounter = 0; // Reset physics step counter
+    lastChartUpdateStep = 0; // Reset chart update step tracker
+    // Don't force initial zero data points - let the simulation naturally populate the charts
     console.log("Maxwell's Demon simulation initialized.");
 }
 
@@ -266,7 +266,8 @@ function runSinglePhysicsStep(dtArgument) {
     const gateY1 = canvasHeight / 2 - gateSize / 2;
     const gateY2 = canvasHeight / 2 + gateSize / 2;
 
-    if (autoMode) {
+    // if (autoMode) { // Replaced by demonMode check
+    if (demonMode === 'automatic') {
         let soonest = null;
         let tMin = Infinity;
 
@@ -289,7 +290,7 @@ function runSinglePhysicsStep(dtArgument) {
             (soonest.color === 'red' && soonest.vx > 0 && soonest.x < centerX) || 
             (soonest.color === 'blue' && soonest.vx < 0 && soonest.x > centerX)  
             : false;
-    } else {
+    } else { // Manual mode
         gateOpen = mouseDown;
     }
 
@@ -310,10 +311,10 @@ function runSinglePhysicsStep(dtArgument) {
         const minSpeed = 0.5;
         const maxSpeed = 5.0; 
         if (currentSpeed < minSpeed && minSpeed > 0) p.setSpeed(minSpeed);
-        else if (currentSpeed > maxSpeed) p.setSpeed(maxSpeed);
-    }
+        else if (currentSpeed > maxSpeed) p.setSpeed(maxSpeed);    }
 
     currentSimulationTime += dtArgument; 
+    physicsStepCounter++; // Increment physics step counter for chart sampling
 }
 
 function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, forceUpdate = false) {
@@ -322,11 +323,12 @@ function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, for
     }
     const simTimeSeconds = currentSimulationTime;
 
-    const updateInterval = 100; // ms between updates
+    const updateIntervalSteps = 100; // Update every 100 physics steps
     if (forceUpdate || chartData.left.timestamps.length === 0 ||
-        realTimestamp - chartData.lastUpdateTime >= updateInterval) {
+        physicsStepCounter - lastChartUpdateStep >= updateIntervalSteps) {
 
-        chartData.lastUpdateTime = realTimestamp;
+        lastChartUpdateStep = physicsStepCounter; // Track when we last updated
+        chartData.lastUpdateSimTime = simTimeSeconds;
 
         chartData.left.timestamps.push(simTimeSeconds);
         chartData.right.timestamps.push(simTimeSeconds);
@@ -436,7 +438,7 @@ function renderSimulation() {
 }
 
 // --- Main Animation Loop & Setup ---
-const MAX_PHYSICS_STEPS_PER_FRAME = 100; // Max physics updates per animation frame
+const MAX_PHYSICS_STEPS_PER_FRAME = 1000; // Max physics updates per animation frame
 
 function animate(timestamp) {
     if (!ctx || !canvas) return; 
@@ -613,11 +615,10 @@ function fullResetAndRestart() {
     lastFpsUpdate = performance.now(); // Reset FPS counter start time
 
     // Re-initialize simulation state (which also handles canvas dimensions)
-    initializeSimulationState(); 
-    // Charts are re-initialized by setupCharts if needed, or updated.
+    initializeSimulationState();    // Charts are re-initialized by setupCharts if needed, or updated.
     if (showChartsCheckbox && showChartsCheckbox.checked) {
         setupCharts(); // Re-setup charts to clear data and apply new colors if theme changed
-        updateCharts(0,0,0,0, performance.now(), true); // Force initial chart draw
+        // Don't force initial zero data points - let the simulation naturally populate the charts
     } else if (chartsContainer) {
         chartsContainer.style.display = 'none';
     }
@@ -645,11 +646,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if(countVal) countVal.textContent = nPerColor; // Initial display
     }
     
-    if (autoModeCheckbox) {
-        autoModeCheckbox.onchange = () => {
-            autoMode = autoModeCheckbox.checked;
+    // if (autoModeCheckbox) { // Replaced by demonModeSelector logic
+    //     autoModeCheckbox.onchange = () => {
+    //         autoMode = autoModeCheckbox.checked;
+    //         // No need to reset, mode changes dynamically
+    //     };
+    // }
+    if (demonModeSelector) {
+        demonModeSelector.onchange = () => {
+            demonMode = demonModeSelector.value;
+            console.log(`Demon mode changed to: ${demonMode}`);
             // No need to reset, mode changes dynamically
         };
+        demonMode = demonModeSelector.value; // Initialize with current selection
     }
     
     if (speedSlider) {

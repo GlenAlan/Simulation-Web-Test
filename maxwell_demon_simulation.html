@@ -83,11 +83,12 @@
 									</div>
 									<div class="sim-controls-content">
 										<!-- Simulation-specific controls will go here -->
+										<label>Speed: <span id="speedVal">50</span>x
+										  <input type="range" id="speedSlider" min="1" max="1000" step="1" value="50">
+										</label>
 										<label>Particles per Color: <span id="countVal">100</span>
 										  <input type="range" id="particleCount" min="1" max="500" step="1" value="100">
-										</label>										<label>Speed Multiplier: <span id="speedVal">10</span>
-										  <input type="range" id="speedSlider" min="1" max="1000" step="1" value="10">
-										</label>
+										</label>										
 										<label>Gate Size: <span id="gateSizeVal">100</span>
 										  <input type="range" id="gateSizeSlider" min="20" max="300" step="10" value="100">
 										</label>
@@ -153,13 +154,22 @@
 
 									<div class="description-area">
 										<h3>About this Simulation</h3>
-										<p>[DETAILED_DESCRIPTION_OF_THE_SIMULATION]</p>
+										<p>This simulation demonstrates Maxwell's Demon, a thought experiment that explores the second law of thermodynamics. The "demon" controls a gate between two chambers of gas. By selectively allowing faster (hotter) particles to move to one side and slower (cooler) particles to the other, the demon appears to decrease entropy, creating a temperature difference without doing work.</p>
 										<p><strong>Controls:</strong></p>
 										<ul>
-											<li><strong>Speed:</strong> Adjusts the simulation rate.</li>
-											<!-- Add descriptions for other controls -->
+											<li><strong>Speed:</strong> Controls the overall speed of the simulation.</li>
+											<li><strong>Particles per Color:</strong> Adjusts the number of red and blue particles in the simulation.</li>
+											<li><strong>Gate Size:</strong> Adjusts the vertical size of the gate controlled by the demon.</li>
+											<li><strong>Demon Mode:</strong>
+												<ul>
+													<li><em>Automatic:</em> The demon intelligently opens and closes the gate to sort particles by color (representing temperature). Red particles are directed to the right, blue to the left.</li>
+													<li><em>Manual:</em> You control the gate by clicking and holding the mouse button over the simulation canvas.</li>
+												</ul>
+											</li>
+											<li><strong>Show Charts:</strong> Toggles the display of charts showing the number of red and blue particles on each side over time.</li>
+											<li><strong>Reset Simulation:</strong> Resets all particles to random positions and velocities and clears the charts.</li>
 										</ul>
-										<p>[INTERACTION_INSTRUCTIONS_IF_ANY]</p>
+										<p>Observe how the distribution of particles changes over time. In automatic mode, the demon attempts to create a temperature gradient. The charts help visualize this process. This simulation helps explore concepts of statistical mechanics, entropy, and the limits of the second law.</p>
 									</div>
 								</div>
 							</div>

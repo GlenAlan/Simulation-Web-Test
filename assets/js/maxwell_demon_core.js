@@ -26,7 +26,7 @@ const fpsDisplay = document.getElementById('fpsDisplay'); // Added FPS display e
 
 // --- Simulation Constants & Parameters ---
 let nPerColor = particleCountSlider ? +particleCountSlider.value : 100;
-let speedMultiplier = speedSlider ? +speedSlider.value : 10; // Renamed from ticksPerFrame for clarity with new timing
+let speedMultiplier = speedSlider ? +speedSlider.value : 50; // Renamed from ticksPerFrame for clarity with new timing
 let gateSize = gateSizeSlider ? +gateSizeSlider.value : 100;
 // let autoMode = autoModeCheckbox ? autoModeCheckbox.checked : true; // Replaced by demonMode
 let demonMode = demonModeSelector ? demonModeSelector.value : 'automatic'; // 'automatic' or 'manual'

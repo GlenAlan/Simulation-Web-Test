@@ -227,10 +227,15 @@ if (canvas) {
 function IX(i,j){ return i + j*size; }
 function setBnd(b, x_arr) {
   for (let i = 1; i <= N; i++) {
-    x_arr[IX(0,   i)] = b===1 ? -x_arr[IX(1, i)] : x_arr[IX(1, i)];
-    x_arr[IX(N+1, i)] = b===1 ? -x_arr[IX(N, i)] : x_arr[IX(N, i)];
-    x_arr[IX(i,   0)] = b===2 ? -x_arr[IX(i, 1)] : x_arr[IX(i, 1)];
-    x_arr[IX(i, N+1)] = b===2 ? -x_arr[IX(i, N)] : x_arr[IX(i, N)];
+    // Vertical boundaries (sides: left i=0, right i=N+1)
+    // b=1 for reflection (e.g., u velocity against vertical wall)
+    x_arr[IX(0, i)]   = (b === 1) ? -x_arr[IX(1, i)] : x_arr[IX(1, i)];
+    x_arr[IX(N+1, i)] = (b === 1) ? -x_arr[IX(N, i)] : x_arr[IX(N, i)];
+
+    // Horizontal boundaries (top j=0, bottom j=N+1)
+    // b=2 for reflection (e.g., v velocity against horizontal wall)
+    x_arr[IX(i, 0)]   = (b === 2) ? -x_arr[IX(i, 1)] : x_arr[IX(i, 1)];
+    x_arr[IX(i, N+1)] = (b === 2) ? -x_arr[IX(i, N)] : x_arr[IX(i, N)];
   }
   x_arr[IX(0,   0)]   = 0.5*(x_arr[IX(1,0)]   + x_arr[IX(0,1)]);
   x_arr[IX(0,   N+1)] = 0.5*(x_arr[IX(1,N+1)] + x_arr[IX(0,N)]);
@@ -239,12 +244,16 @@ function setBnd(b, x_arr) {
 }
 function linSolve(b, x_arr, x0_arr, a, c) {
   const c_inv = 1.0 / c;
-  for (let k = 0; k < iter; k++) {
+  for (let k_iter = 0; k_iter < iter; k_iter++) { // Renamed k to k_iter to avoid conflict
     for (let j = 1; j <= N; j++) {
+      const prev_j_idx = (j - 1) * size;
+      const curr_j_idx = j * size;
+      const next_j_idx = (j + 1) * size;
       for (let i = 1; i <= N; i++) {
-        x_arr[IX(i,j)] = (x0_arr[IX(i,j)] + a*(
-          x_arr[IX(i-1,j)] + x_arr[IX(i+1,j)] +
-          x_arr[IX(i, j-1)] + x_arr[IX(i, j+1)]
+        const idx = curr_j_idx + i;
+        x_arr[idx] = (x0_arr[idx] + a*(
+          x_arr[idx - 1]     + x_arr[idx + 1] +    // x_arr[IX(i-1,j)] + x_arr[IX(i+1,j)]
+          x_arr[prev_j_idx + i] + x_arr[next_j_idx + i] // x_arr[IX(i,j-1)] + x_arr[IX(i,j+1)]
         )) * c_inv;
       }
     }
@@ -259,17 +268,23 @@ function advect(b, d_arr, d0_arr, u_vel, v_vel) {
   const dt0 = physicsDt * N;
   for (let j = 1; j <= N; j++) {
     for (let i = 1; i <= N; i++) {
-      let x_coord = i - dt0 * u_vel[IX(i,j)];
-      let y_coord = j - dt0 * v_vel[IX(i,j)];
+      const current_idx = IX(i,j);
+      let x_coord = i - dt0 * u_vel[current_idx];
+      let y_coord = j - dt0 * v_vel[current_idx];
+
       x_coord = Math.max(0.5, Math.min(N + 0.5, x_coord));
       y_coord = Math.max(0.5, Math.min(N + 0.5, y_coord));
-      const i0 = Math.floor(x_coord), i1 = i0 + 1;
-      const j0 = Math.floor(y_coord), j1 = j0 + 1;
+
+      const i0 = x_coord | 0, i1 = i0 + 1; // Use bitwise OR for floor on positive numbers
+      const j0 = y_coord | 0, j1 = j0 + 1; // Use bitwise OR for floor on positive numbers
+
       const s1 = x_coord - i0, s0 = 1 - s1;
       const t1 = y_coord - j0, t0 = 1 - t1;
-      d_arr[IX(i,j)] =
-        s0*(t0*d0_arr[IX(i0,j0)] + t1*d0_arr[IX(i0,j1)]) +
-        s1*(t0*d0_arr[IX(i1,j0)] + t1*d0_arr[IX(i1,j1)]);
+
+      const base_idx_i0j0 = IX(i0, j0);
+      d_arr[current_idx] =
+        s0*(t0*d0_arr[base_idx_i0j0] + t1*d0_arr[base_idx_i0j0 + size]) + 
+        s1*(t0*d0_arr[base_idx_i0j0 + 1] + t1*d0_arr[base_idx_i0j0 + 1 + size]); 
     }
   }
   setBnd(b, d_arr);
@@ -277,21 +292,32 @@ function advect(b, d_arr, d0_arr, u_vel, v_vel) {
 function project(u_vel, v_vel, p_arr, div_arr) {
   const h_inv = 1.0 / N;
   for (let j = 1; j <= N; j++) {
+    const prev_j_idx = (j-1) * size;
+    const curr_j_idx = j * size;
+    const next_j_idx = (j+1) * size;
     for (let i = 1; i <= N; i++) {
-      div_arr[IX(i,j)] = -0.5 * h_inv * (
-        u_vel[IX(i+1,j)] - u_vel[IX(i-1,j)] +
-        v_vel[IX(i, j+1)] - v_vel[IX(i, j-1)]
+      const idx = curr_j_idx + i;
+      div_arr[idx] = -0.5 * h_inv * (
+        u_vel[idx + 1] - u_vel[idx - 1] +           // u_vel[IX(i+1,j)] - u_vel[IX(i-1,j)]
+        v_vel[next_j_idx + i] - v_vel[prev_j_idx + i] // v_vel[IX(i,j+1)] - v_vel[IX(i,j-1)]
       );
-      p_arr[IX(i,j)] = 0;
+      p_arr[idx] = 0;
     }
   }
   setBnd(0, div_arr); setBnd(0, p_arr);
   linSolve(0, p_arr, div_arr, 1, 4);
+  
+  // const N_half_inv = 0.5 * N; // This variable was unused.
   const N_half = 0.5 * N;
+
   for (let j = 1; j <= N; j++) {
+    const prev_j_idx = (j-1) * size;
+    const curr_j_idx = j * size;
+    const next_j_idx = (j+1) * size;
     for (let i = 1; i <= N; i++) {
-      u_vel[IX(i,j)] -= N_half * (p_arr[IX(i+1,j)] - p_arr[IX(i-1,j)]);
-      v_vel[IX(i,j)] -= N_half * (p_arr[IX(i, j+1)] - p_arr[IX(i, j-1)]);
+      const idx = curr_j_idx + i;
+      u_vel[idx] -= N_half * (p_arr[idx + 1] - p_arr[idx - 1]); // p_arr[IX(i+1,j)] - p_arr[IX(i-1,j)]
+      v_vel[idx] -= N_half * (p_arr[next_j_idx + i] - p_arr[prev_j_idx + i]); // p_arr[IX(i,j+1)] - p_arr[IX(i,j-1)]
     }
   }
   setBnd(1, u_vel); setBnd(2, v_vel);
@@ -302,7 +328,7 @@ function addSource(x_arr, s_arr) {
 
 function renderDensity() {
     if (!ctx) return;
-    if (!offscreenCanvas) { // Initialize if not already
+    if (!offscreenCanvas) { 
         offscreenCanvas = document.createElement('canvas');
         offscreenCanvas.width = N;
         offscreenCanvas.height = N;
@@ -313,27 +339,39 @@ function renderDensity() {
     if (!offscreenCtx || !offscreenImageData) return;
 
     const data = offscreenImageData.data;
+    let data_idx = 0; // Use a single incrementing index for imageData
+
     for (let y_px = 0; y_px < N; y_px++) {
+        const sim_j = N - y_px; // Row in simulation grid (decreases as y_px increases)
+        const dens_row_start_idx = sim_j * size; // Precalculate row start for dens array
+
         for (let x_px = 0; x_px < N; x_px++) {
-            const sim_i = x_px + 1; const sim_j = N - y_px;
-            const T_val = dens[IX(sim_i, sim_j)];
+            const sim_i = x_px + 1; // Column in simulation grid
+            const T_val = dens[dens_row_start_idx + sim_i]; // Optimized dens access
             const t = Math.max(0, Math.min(1, T_val));
-            const hue = (1 - t) * 240; const s_hsl = 1.0; const l_hsl = 0.5;
-            const c_hsl = (1 - Math.abs(2 * l_hsl - 1)) * s_hsl;
-            const x_hsl_component = c_hsl * (1 - Math.abs((hue / 60) % 2 - 1));
-            const m_hsl = l_hsl - c_hsl / 2;
-            let r_norm, g_norm, b_norm; const h_prime = hue / 60;
-            if (h_prime >= 0 && h_prime < 1) { r_norm = c_hsl; g_norm = x_hsl_component; b_norm = 0; }
-            else if (h_prime >= 1 && h_prime < 2) { r_norm = x_hsl_component; g_norm = c_hsl; b_norm = 0; }
-            else if (h_prime >= 2 && h_prime < 3) { r_norm = 0; g_norm = c_hsl; b_norm = x_hsl_component; }
-            else if (h_prime >= 3 && h_prime < 4) { r_norm = 0; g_norm = x_hsl_component; b_norm = c_hsl; }
-            else if (h_prime >= 4 && h_prime < 5) { r_norm = x_hsl_component; g_norm = 0; b_norm = c_hsl; }
-            else { r_norm = c_hsl; g_norm = 0; b_norm = x_hsl_component; }
-            const R = Math.round((r_norm + m_hsl) * 255);
-            const G = Math.round((g_norm + m_hsl) * 255);
-            const B = Math.round((b_norm + m_hsl) * 255);
-            const index = (y_px * N + x_px) * 4;
-            data[index]     = R; data[index + 1] = G; data[index + 2] = B; data[index + 3] = 255;
+            
+            const hue = (1 - t) * 240;
+            const C = 1.0; 
+            const X = C * (1 - Math.abs((hue / 60) % 2 - 1));
+            
+            let r_prime, g_prime, b_prime;
+            const h_prime = hue / 60;
+
+            if (h_prime >= 0 && h_prime < 1) { r_prime = C; g_prime = X; b_prime = 0; }
+            else if (h_prime >= 1 && h_prime < 2) { r_prime = X; g_prime = C; b_prime = 0; }
+            else if (h_prime >= 2 && h_prime < 3) { r_prime = 0; g_prime = C; b_prime = X; }
+            else if (h_prime >= 3 && h_prime < 4) { r_prime = 0; g_prime = X; b_prime = C; }
+            else if (h_prime >= 4 && h_prime < 5) { r_prime = X; g_prime = 0; b_prime = C; } 
+            else { r_prime = C; g_prime = 0; b_prime = X; } 
+            
+            const R = Math.round(r_prime * 255);
+            const G = Math.round(g_prime * 255);
+            const B = Math.round(b_prime * 255);
+
+            data[data_idx++] = R;
+            data[data_idx++] = G;
+            data[data_idx++] = B;
+            data[data_idx++] = 255; 
         }
     }
     offscreenCtx.putImageData(offscreenImageData, 0, 0);
@@ -349,14 +387,17 @@ function simulate() {
     if (simCellW > 0 && simCellH > 0) {
         const ci = Math.floor(mX / simCellW) + 1; 
         const cj = N - Math.floor(mY / simCellH);
+        
+        const heatRadiusSq = heatRadius*heatRadius;
+        const twiceHeatRadiusSq = 2*heatRadiusSq; // Or 2 * heatRadius * heatRadius
 
         for (let di = -heatRadius; di <= heatRadius; di++) {
           for (let dj = -heatRadius; dj <= heatRadius; dj++) {
             const ii = ci + di, jj = cj + dj;
             if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
               const d2 = di*di + dj*dj;
-              if (d2 <= heatRadius*heatRadius) {
-                const w = Math.exp(-d2/(2*heatRadius*heatRadius));
+              if (d2 <= heatRadiusSq) {
+                const w = Math.exp(-d2/twiceHeatRadiusSq);
                 dens_prev[IX(ii,jj)] += heatAmp * w;
               }
             }
@@ -365,33 +406,49 @@ function simulate() {
     }
   }
   prev_avg_density = avg_density; avg_density = 0;
+  
+  // Buoyancy calculation loop
   for (let j = 1; j <= N; j++) {
+    const base_j_idx = j * size;
     for (let i = 1; i <= N; i++) {
-      const id = IX(i,j);
+      const id = base_j_idx + i;
       avg_density += dens[id];
       const anomaly = dens[id] - prev_avg_density;
       v_prev[id] += buoyancyCoeff * anomaly;
     }
   }
-  avg_density /= (N*N);
+  avg_density /= (N*N); // Potential division by zero if N is 0, but N is usually > 0
+
   addSource(u, u_prev); addSource(v, v_prev);
+  
   u0.set(u); diffuse(1, u, u0, visc);
   v0.set(v); diffuse(2, v, v0, visc);
+  
   project(u, v, u0, v0);
+  
   u0.set(u); v0.set(v);
-  advect(1, u, u0, u0, v0);
-  advect(2, v, v0, u0, v0);
-  project(u, v, u0, v0);
+  advect(1, u, u0, u0, v0); // u0, v0 are velocity fields for advection of u
+  advect(2, v, v0, u0, v0); // u0, v0 are velocity fields for advection of v
+  
+  project(u, v, u0, v0); // u0, v0 are p_arr, div_arr respectively in this call
+  
   addSource(dens, dens_prev);
   dens0.set(dens); diffuse(0, dens, dens0, diff);
-  dens0.set(dens); advect(0, dens, dens0, u, v);
-  for (let k = 0; k < 3; k++) {
-    const j_cool = N - k; const gradient = 1/(k+1);
+  dens0.set(dens); advect(0, dens, dens0, u, v); // u, v are velocity fields for advection of dens
+
+  // Cooling loop
+  // const coolGradients = [1.0, 0.5, 1.0/3.0]; // Precompute if k range is fixed and larger
+  for (let k = 0; k < 3; k++) { // k is 0, 1, 2
+    const j_cool = N - k; 
+    const currentGradient = 1.0 / (k + 1); // gradient = 1.0, 0.5, 0.333...
+    const base_j_cool_idx = j_cool * size;
+    const scaledCoolRateBase = (coolRate / 100) * currentGradient;
+
     for (let i = 1; i <= N; i++) {
-        const rate = (coolRate/100) * gradient;
-        const noise = 1 + (Math.random() - 0.5) * 0.2;
-        const idx = IX(i, j_cool);
-        dens[idx] *= (1 - rate * noise);
+        // const rate = (coolRate/100) * currentGradient; // Moved out: scaledCoolRateBase
+        const noise = 1 + (Math.random() - 0.5) * 0.2; // 0.9 to 1.1
+        const idx = base_j_cool_idx + i;
+        dens[idx] *= (1 - scaledCoolRateBase * noise);
         dens[idx] = Math.max(0, dens[idx]);
     }
   }
@@ -506,7 +563,7 @@ window.convectionSimulation = {
         return N; // N is the current grid size
     },
     getAvailableGridSizes: function() {
-        return [48, 64, 96]; // Define the available grid sizes
+        return [48, 64, 96, 128]; // Define the available grid sizes
     }
     // Potentially add other functions to expose if needed by UI
 };

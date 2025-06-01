@@ -40,6 +40,7 @@ let heatRadius = 5,
     heatAmp    = 0.5, 
     coolRate   = 0.5, 
     heating    = false,
+    cooling    = false, // Added for right-click cooling
     mX = 0, mY = 0;
 
 // DOM REFS
@@ -211,10 +212,32 @@ function updatePosition(e) {
 }
 
 if (canvas) {
-    canvas.addEventListener('mousedown', (e) => { heating = true; updatePosition(e); });
-    canvas.addEventListener('mouseup', () => heating = false);
-    canvas.addEventListener('mouseleave', () => heating = false);
-    canvas.addEventListener('mousemove', (e) => { if(heating) updatePosition(e); });
+    canvas.addEventListener('mousedown', (e) => {
+        updatePosition(e);
+        if (e.button === 0) { // Left click
+            heating = true;
+            cooling = false;
+        } else if (e.button === 2) { // Right click
+            cooling = true;
+            heating = false;
+        }
+    });
+    canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 0) {
+            heating = false;
+        } else if (e.button === 2) {
+            cooling = false;
+        }
+    });
+    canvas.addEventListener('mouseleave', () => {
+        heating = false;
+        cooling = false;
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        if(heating || cooling) updatePosition(e);
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent context menu on right click
 
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault(); heating = true; updatePosition(e);
@@ -383,7 +406,7 @@ function renderDensity() {
 }
 function simulate() {
   u_prev.fill(0); v_prev.fill(0); dens_prev.fill(0);
-  if (heating && canvas && canvas.width > 0 && canvas.height > 0) { 
+  if ((heating || cooling) && canvas && canvas.width > 0 && canvas.height > 0) { 
     const simCellW = canvas.width / N; 
     const simCellH = canvas.height / N;
     if (simCellW > 0 && simCellH > 0) {
@@ -400,7 +423,14 @@ function simulate() {
               const d2 = di*di + dj*dj;
               if (d2 <= heatRadiusSq) {
                 const w = Math.exp(-d2/twiceHeatRadiusSq);
-                dens_prev[IX(ii,jj)] += heatAmpMult * heatAmp * w;
+                if (heating) {
+                    dens_prev[IX(ii,jj)] += heatAmpMult * heatAmp * w;
+                } else if (cooling) {
+                    dens_prev[IX(ii,jj)] -= heatAmpMult * heatAmp * w; // Subtract for cooling
+                    // Ensure density doesn't go below a minimum (e.g., 0 or a small positive value)
+                    // This will be handled when addSource is called, as dens_prev is added to dens.
+                    // However, we might want to clamp the effect here or ensure dens itself is clamped later.
+                }
               }
             }
           }
@@ -435,6 +465,10 @@ function simulate() {
   project(u, v, u0, v0); // u0, v0 are p_arr, div_arr respectively in this call
   
   addSource(dens, dens_prev);
+  // Clamp density after adding source to ensure it's within bounds
+  for (let i = 0; i < dens.length; i++) {
+    dens[i] = Math.max(0, Math.min(1, dens[i])); // Clamp between 0 and 1 (or other appropriate range)
+  }
   dens0.set(dens); diffuse(0, dens, dens0, diff);
   dens0.set(dens); advect(0, dens, dens0, u, v); // u, v are velocity fields for advection of dens
 

@@ -561,15 +561,26 @@ window.conductionSimulation = {
         particles.forEach(p => p.smAmp = 0);
         if (energyVal) energyVal.textContent = computeEnergy().toFixed(0);
         console.log(`Conduction simulation reset to grid: ${cols}x${rows}.`);
-    },
-    setGridLayout: (layoutName) => {
+    },    setGridLayout: (layoutName) => {
         const newLayout = PREDEFINED_GRID_LAYOUTS[layoutName];
         if (newLayout) {
             cols = newLayout.cols;
             rows = newLayout.rows;
             currentGridLayoutName = layoutName;
             console.log(`Setting grid layout to ${layoutName}: ${cols}x${rows}`);
+            
+            // Update canvas aspect ratio to match grid layout
+            const aspectRatio = cols / rows;
+            const aspectRatioBox = document.querySelector('.sim-aspect-ratio-box');
+            if (aspectRatioBox) {
+                aspectRatioBox.style.setProperty('--aspect-ratio', `${cols}/${rows}`);
+                console.log(`Updated aspect ratio to ${cols}/${rows} (${aspectRatio.toFixed(2)})`);
+            }
+            
             window.conductionSimulation.reset(); // Reset to apply new grid dimensions
+            
+            // Trigger canvas resize to apply new aspect ratio
+            window.dispatchEvent(new Event('resize'));
         } else {
             console.warn(`Grid layout "${layoutName}" not found.`);
         }

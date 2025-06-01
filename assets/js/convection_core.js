@@ -10,6 +10,8 @@ const diff   = 0.0001,
 // TIME MANAGEMENT
 const physicsDt = 0.02;
 const targetPhysicsRate = 60;
+const heatAmpMult = 1.25; // Multiplier for heat amplitude
+const coolAmpMult = 1; // Multiplier for cooling rate
 let accumulatedTime = 0;
 let timeScale = 2.5; 
 let lastTimestamp = 0;
@@ -398,7 +400,7 @@ function simulate() {
               const d2 = di*di + dj*dj;
               if (d2 <= heatRadiusSq) {
                 const w = Math.exp(-d2/twiceHeatRadiusSq);
-                dens_prev[IX(ii,jj)] += heatAmp * w;
+                dens_prev[IX(ii,jj)] += heatAmpMult * heatAmp * w;
               }
             }
           }
@@ -442,7 +444,7 @@ function simulate() {
     const j_cool = N - k; 
     const currentGradient = 1.0 / (k + 1); // gradient = 1.0, 0.5, 0.333...
     const base_j_cool_idx = j_cool * size;
-    const scaledCoolRateBase = (coolRate / 100) * currentGradient;
+    const scaledCoolRateBase = (coolAmpMult * coolRate / 100) * currentGradient;
 
     for (let i = 1; i <= N; i++) {
         // const rate = (coolRate/100) * currentGradient; // Moved out: scaledCoolRateBase

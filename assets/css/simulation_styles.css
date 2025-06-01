@@ -606,7 +606,7 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
     bottom: 0;
     left: 0;
     width: 100%;
-    background-color: var(--color-bg-tertiary, #f0f0f0); /* Use a variable or a default */
+    background-color: var(--color-bg-subtle); /* Changed from --color-bg-tertiary */
     padding: 8px 15px;
     box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
     z-index: 1005; /* Ensure it's above other fullscreen content but below modals/menus if any */
@@ -617,7 +617,7 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
 }
 
 html.dark-mode .sim-info-bar.fullscreen-style {
-    background-color: var(--color-bg-tertiary-dark, #282c34); /* Dark mode background */
+    /* background-color is now handled by --color-bg-subtle which adapts to dark mode */
     border-top: 1px solid var(--color-border-subtle-dark);
 }
 

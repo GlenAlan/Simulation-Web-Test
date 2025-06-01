@@ -55,7 +55,45 @@ let leftChart, rightChart;
 const maxDataPoints = 1000;
 let chartTextColor = 'var(--color-text-secondary)'; // Default, will be updated
 let chartGridColor = 'var(--color-border)';
-let chartTitleColor = 'var(--color-text-primary)';
+let chartTitleColor = 'var(--color-text-primary)'; // Changed to use --color-text-primary
+
+// Function to update chart colors based on current theme
+function updateChartColors() {
+    const rootStyle = getComputedStyle(document.documentElement);
+    chartTextColor = rootStyle.getPropertyValue('--color-text-secondary').trim() || '#aaa';
+    chartGridColor = rootStyle.getPropertyValue('--color-border').trim() || 'rgba(255,255,255,0.1)';
+    // Ensure chartTitleColor uses the theme's primary text color.
+    chartTitleColor = rootStyle.getPropertyValue('--color-text-primary').trim() || (document.documentElement.classList.contains('dark-mode') ? '#fff' : '#333');
+
+    [leftChart, rightChart].forEach(chart => {
+        if (chart && chart.options) { // Ensure chart and options exist
+            // Update scales colors (axes, ticks, grid lines)
+            if (chart.options.scales) {
+                if (chart.options.scales.x) {
+                    if (chart.options.scales.x.title) chart.options.scales.x.title.color = chartTextColor;
+                    if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = chartTextColor;
+                    if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = chartGridColor;
+                }
+                if (chart.options.scales.y) {
+                    if (chart.options.scales.y.title) chart.options.scales.y.title.color = chartTextColor;
+                    if (chart.options.scales.y.ticks) chart.options.scales.y.ticks.color = chartTextColor;
+                    if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = chartGridColor;
+                }
+            }
+
+            // Update plugins colors (title, legend)
+            if (chart.options.plugins) {
+                if (chart.options.plugins.title) {
+                    chart.options.plugins.title.color = chartTitleColor; // Apply theme-based color to title
+                }
+                if (chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                    chart.options.plugins.legend.labels.color = chartTitleColor; // Legend labels also use this color
+                }
+            }
+            chart.update('none'); // Update chart without animation
+        }
+    });
+}
 
 const chartData = {
     left: { timestamps: [], red: [], blue: [] },
@@ -278,30 +316,6 @@ function runSinglePhysicsStep(dtArgument) {
     currentSimulationTime += dtArgument; 
 }
 
-function updateChartColors() {
-    // Get theme-aware colors from CSS custom properties
-    const rootStyle = getComputedStyle(document.documentElement);
-    chartTextColor = rootStyle.getPropertyValue('--color-text-secondary').trim() || '#aaa';
-    chartGridColor = rootStyle.getPropertyValue('--color-border').trim() || 'rgba(255,255,255,0.1)';
-    // Ensure chartTitleColor is distinct and visible in light mode
-    chartTitleColor = rootStyle.getPropertyValue('--color-text-primary').trim() || (document.documentElement.classList.contains('dark-mode') ? '#fff' : '#333');
-
-
-    [leftChart, rightChart].forEach(chart => {
-        if (chart) {
-            chart.options.scales.x.title.color = chartTextColor;
-            chart.options.scales.x.ticks.color = chartTextColor;
-            chart.options.scales.x.grid.color = chartGridColor;
-            chart.options.scales.y.title.color = chartTextColor; // Assuming y-axis has a title object
-            chart.options.scales.y.ticks.color = chartTextColor;
-            chart.options.scales.y.grid.color = chartGridColor;
-            chart.options.plugins.title.color = chartTitleColor;
-            chart.options.plugins.legend.labels.color = chartTitleColor;
-            chart.update('none');
-        }
-    });
-}
-
 function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, forceUpdate = false) {
     if (!leftChart || !rightChart || !showChartsCheckbox || (!showChartsCheckbox.checked && !forceUpdate)) {
         return;
@@ -511,7 +525,7 @@ function setupCharts() {
                 ticks: { color: chartTextColor }, // Set by updateChartColors
                 grid: { color: chartGridColor } // Set by updateChartColors
             }
-        }
+        },
     });
     
     const datasetDefaults = (label, borderColor, bgColor) => ({

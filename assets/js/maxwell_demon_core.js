@@ -577,11 +577,66 @@ function handleSimulationResize() {
     const oldWidth = canvasWidth;
     const oldHeight = canvasHeight;
 
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect(); // Gets the CSS-scaled size
+    const aspectRatioBox = canvas.parentElement; // .sim-aspect-ratio-box
+    if (!aspectRatioBox) return;
 
-    canvasWidth = rect.width;
-    canvasHeight = rect.height;
+    const isFullscreen = document.body.classList.contains('sim-fullscreen-active');
+    let targetWidth, targetHeight;
+
+    // Get aspect ratio from CSS custom property
+    const simStyle = getComputedStyle(aspectRatioBox);
+    const simAspectRatioString = simStyle.getPropertyValue('--aspect-ratio').trim();
+    let simAspectRatio = 2; // Default for Maxwell's Demon (2/1)
+    if (simAspectRatioString) {
+        const parts = simAspectRatioString.split('/');
+        if (parts.length === 2 && parseFloat(parts[1]) !== 0) {
+            simAspectRatio = parseFloat(parts[0]) / parseFloat(parts[1]);
+        } else if (parts.length === 1) {
+            simAspectRatio = parseFloat(simAspectRatioString);
+        }
+    }    if (isNaN(simAspectRatio) || simAspectRatio <= 0) simAspectRatio = 2;
+    
+    if (isFullscreen) {
+        // In fullscreen, calculate maximum size that fits while maintaining aspect ratio
+        const canvasWrapper = aspectRatioBox.parentElement; 
+        if (!canvasWrapper) return;
+        
+        // Get available space from the wrapper (accounts for padding from parent)
+        const availableWidth = canvasWrapper.clientWidth;
+        const availableHeight = canvasWrapper.clientHeight;
+        
+        // Calculate the largest size that fits the aspect ratio within available space
+        if (availableWidth / availableHeight > simAspectRatio) {
+            // Height is the limiting factor
+            targetHeight = availableHeight;
+            targetWidth = targetHeight * simAspectRatio;
+        } else {
+            // Width is the limiting factor  
+            targetWidth = availableWidth;
+            targetHeight = targetWidth / simAspectRatio;
+        }
+        
+        // Set explicit dimensions for fullscreen to ensure proper scaling
+        aspectRatioBox.style.width = `${targetWidth}px`;
+        aspectRatioBox.style.height = `${targetHeight}px`;
+    } else {
+        // Not fullscreen: reset inline styles so CSS can take over
+        aspectRatioBox.style.width = ''; 
+        aspectRatioBox.style.height = ''; 
+        
+        // Get the computed size based on CSS layout
+        const boxRect = aspectRatioBox.getBoundingClientRect();
+        targetWidth = boxRect.width;
+        targetHeight = boxRect.height;
+    }
+
+    targetWidth = Math.max(1, Math.round(targetWidth));
+    targetHeight = Math.max(1, Math.round(targetHeight));
+
+    const dpr = window.devicePixelRatio || 1;
+
+    canvasWidth = targetWidth;
+    canvasHeight = targetHeight;
 
     canvas.width = Math.round(canvasWidth * dpr);
     canvas.height = Math.round(canvasHeight * dpr);

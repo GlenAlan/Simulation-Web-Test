@@ -84,28 +84,29 @@ function updateCanvasResolution() {
         } else if (parts.length === 1) {
             simAspectRatio = parseFloat(simAspectRatioString);
         }
-    }
-    if (isNaN(simAspectRatio) || simAspectRatio <= 0) simAspectRatio = 1;
-
+    }    if (isNaN(simAspectRatio) || simAspectRatio <= 0) simAspectRatio = 1;
+    
     if (isFullscreen) {
-        // In fullscreen, .sim-canvas-wrapper is the direct container for .sim-aspect-ratio-box
-        // This wrapper is inside .simulation-main-content which has the fullscreen padding.
+        // In fullscreen, calculate maximum size that fits while maintaining aspect ratio
         const canvasWrapper = aspectRatioBox.parentElement; 
         if (!canvasWrapper) return;
         
-        // These are dimensions of the padded area where canvas should fit.
+        // Get available space from the wrapper (accounts for padding from parent)
         const availableWidth = canvasWrapper.clientWidth;
         const availableHeight = canvasWrapper.clientHeight;
-
+        
+        // Calculate the largest size that fits the aspect ratio within available space
         if (availableWidth / availableHeight > simAspectRatio) {
+            // Height is the limiting factor
             targetHeight = availableHeight;
             targetWidth = targetHeight * simAspectRatio;
         } else {
+            // Width is the limiting factor  
             targetWidth = availableWidth;
             targetHeight = targetWidth / simAspectRatio;
         }
-        // Set the aspect ratio box size. Canvas inside it will be 100% of this.
-        // The flex centering on .sim-canvas-wrapper will center this box.
+        
+        // Set explicit dimensions for fullscreen to ensure proper scaling
         aspectRatioBox.style.width = `${targetWidth}px`;
         aspectRatioBox.style.height = `${targetHeight}px`;
     } else {

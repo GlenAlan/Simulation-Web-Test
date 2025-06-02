@@ -466,40 +466,9 @@ function animate(timestamp) {
         console.warn("Max physics steps per frame reached. Simulation might be running too slow or timeScale is too high.");
         physicsStepAccumulator = 0; // Reset accumulator to prevent further immediate loops
     }
-    
-    // Update canvas resolution if it changed
+      // Update canvas resolution if it changed
     // Check against the canvas element's actual clientWidth/clientHeight
-    if (canvas.clientWidth !== canvasWidth || canvas.clientHeight !== canvasHeight) {
-        const oldSpacing = spacing; // Capture old global spacing
-
-        canvasWidth = canvas.clientWidth;   // Update script's tracked width
-        canvasHeight = canvas.clientHeight; // Update script's tracked height
-        canvas.width = canvasWidth;         // Set drawing buffer width to match display
-        canvas.height = canvasHeight;       // Set drawing buffer height to match display
-        
-        if (particles.length > 0) {
-            // Recalculate new grid geometry using the helper function
-            const newGeom = calculateGridGeometry(canvasWidth, canvasHeight);
-
-            // Adapt existing particles to the new geometry.
-            // oldSpacing is guaranteed > 0 (from MIN_SPACING in initializeParticles/previous resize)
-            // newGeom.spacing is guaranteed > 0 (from MIN_SPACING in calculateGridGeometry)
-            // The internal check in adaptParticlesToResize (oldSpacing > 0 && newSpacing > 0) will pass.
-            adaptParticlesToResize(oldSpacing, newGeom.spacing, newGeom.diag, newGeom.offsetX, newGeom.offsetY);
-            
-            // Update global simulation parameters
-            spacing = newGeom.spacing;
-            diag = newGeom.diag;
-            offsetX = newGeom.offsetX;
-            offsetY = newGeom.offsetY;
-            
-            forces = computeForces(); // Recompute forces with new positions and rest lengths
-        } else {
-            // If there are no particles (e.g., initial setup failed or was cleared), re-initialize.
-            initializeParticles(); // This will use the new canvasWidth/Height.
-            forces = computeForces();
-        }
-    }
+    handleConductionResize();
     
     render();
     requestAnimationFrame(animate);
@@ -629,4 +598,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- End Example ---
 });
+
+function handleConductionResize() {
+    if (!canvas) return;
+    
+    const aspectRatioBox = canvas.parentElement; // .sim-aspect-ratio-box
+    if (!aspectRatioBox) return;
+
+    const isFullscreen = document.body.classList.contains('sim-fullscreen-active');
+    let targetWidth, targetHeight;
+
+    // Get aspect ratio from CSS custom property  
+    const simStyle = getComputedStyle(aspectRatioBox);
+    const simAspectRatioString = simStyle.getPropertyValue('--aspect-ratio').trim();
+    let simAspectRatio = 1; // Default aspect ratio for conduction
+    if (simAspectRatioString) {
+        const parts = simAspectRatioString.split('/');
+        if (parts.length === 2 && parseFloat(parts[1]) !== 0) {
+            simAspectRatio = parseFloat(parts[0]) / parseFloat(parts[1]);
+        } else if (parts.length === 1) {
+            simAspectRatio = parseFloat(simAspectRatioString);
+        }
+    }
+    if (isNaN(simAspectRatio) || simAspectRatio <= 0) simAspectRatio = 1;    if (isFullscreen) {
+        // In fullscreen, calculate maximum size that fits while maintaining aspect ratio
+        const canvasWrapper = aspectRatioBox.parentElement; 
+        if (!canvasWrapper) return;
+        
+        // Get available space from the wrapper (accounts for padding from parent)
+        const availableWidth = canvasWrapper.clientWidth;
+        const availableHeight = canvasWrapper.clientHeight;
+        
+        // Calculate the largest size that fits the aspect ratio within available space
+        if (availableWidth / availableHeight > simAspectRatio) {
+            // Height is the limiting factor
+            targetHeight = availableHeight;
+            targetWidth = targetHeight * simAspectRatio;
+        } else {
+            // Width is the limiting factor  
+            targetWidth = availableWidth;
+            targetHeight = targetWidth / simAspectRatio;
+        }
+        
+        // Set explicit dimensions for fullscreen to ensure proper scaling
+        aspectRatioBox.style.width = `${targetWidth}px`;
+        aspectRatioBox.style.height = `${targetHeight}px`;
+    } else {
+        // Not fullscreen: reset inline styles so CSS can take over
+        aspectRatioBox.style.width = ''; 
+        aspectRatioBox.style.height = ''; 
+        
+        // Get the computed size based on CSS layout
+        const boxRect = aspectRatioBox.getBoundingClientRect();
+        targetWidth = boxRect.width;
+        targetHeight = boxRect.height;
+    }
+
+    targetWidth = Math.max(1, Math.round(targetWidth));
+    targetHeight = Math.max(1, Math.round(targetHeight));
+
+    if (targetWidth !== canvasWidth || targetHeight !== canvasHeight) {
+        const oldSpacing = spacing; // Capture old global spacing
+
+        canvasWidth = targetWidth;   // Update script's tracked width
+        canvasHeight = targetHeight; // Update script's tracked height
+        canvas.width = canvasWidth;  // Set drawing buffer width to match display
+        canvas.height = canvasHeight; // Set drawing buffer height to match display
+        
+        if (particles.length > 0) {
+            // Recalculate new grid geometry using the helper function
+            const newGeom = calculateGridGeometry(canvasWidth, canvasHeight);
+
+            // Adapt existing particles to the new geometry.
+            adaptParticlesToResize(oldSpacing, newGeom.spacing, newGeom.diag, newGeom.offsetX, newGeom.offsetY);
+            
+            // Update global simulation parameters
+            spacing = newGeom.spacing;
+            diag = newGeom.diag;
+            offsetX = newGeom.offsetX;
+            offsetY = newGeom.offsetY;
+            
+            forces = computeForces(); // Recompute forces with new positions and rest lengths
+        } else {
+            // If there are no particles, re-initialize.
+            initializeParticles(); // This will use the new canvasWidth/Height.
+            forces = computeForces();
+        }
+    }
+}
 

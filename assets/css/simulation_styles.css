@@ -624,25 +624,32 @@ body.sim-fullscreen-active .simulation-main-content {
 body.sim-fullscreen-active .simulation-display-container {
     /* Remove max-width constraint for fullscreen - let it use available space */
     width: 100%;
-    height: 100%;
+    /* Don't set height: 100% - let it size based on content and available space */
     max-width: none; /* Override the 750px limit in fullscreen */
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0; /* Don't shrink when charts are present */
+    flex-shrink: 1; /* Allow shrinking when charts are present */
     box-sizing: border-box;
     margin: 0; /* Remove margins in fullscreen */
 }
 
 /* Canvas wrapper - uses CSS for aspect ratio calculations */
 body.sim-fullscreen-active .sim-canvas-wrapper {
-    /* Maximize size while preserving aspect ratio and allowing for buttons/UI */
-    width: min(calc(100vw - 100px), calc((100vh - 120px) * var(--aspect-ratio, 2)));
-    height: min(calc(100vh - 120px), calc((100vw - 100px) / var(--aspect-ratio, 2)));
+    /* Calculate size accounting for potential charts presence */
+    /* Base calculations: subtract padding, info bar space, and potential charts space */
+    width: min(
+        calc(100vw - 100px), 
+        calc((100vh - 110px) * var(--aspect-ratio, 2))
+    );
+    height: min(
+        calc(100vh - 110px), 
+        calc((100vw - 100px) / var(--aspect-ratio, 2))
+    );
     
-    /* Ensure it stays within reasonable bounds while maximizing space usage */
-    max-width: calc(100vw - 100px); /* Leave space for settings panel toggle and other UI */
-    max-height: calc(100vh - 120px); /* Leave space for info bar and minimal padding */
+    /* Ensure it stays within reasonable bounds */
+    max-width: calc(100vw - 50px); /* Leave space for settings panel toggle and other UI */
+    max-height: calc(100vh - 100px); /* Leave space for info bar, padding, and potential charts */
     
     display: flex;
     align-items: center;

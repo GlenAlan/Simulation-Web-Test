@@ -9,6 +9,20 @@
 - Updated sitemap.xml with image information
 - Created HTML sitemap page for users and search engines
 - Created a custom 404 error page
+
+## Additional Improvements (June 3, 2025)
+- Added HTML lang attribute for accessibility and SEO
+- Unified Twitter Card and Open Graph metadata for consistent social sharing
+- Added more descriptive Open Graph image with appropriate alt text
+- Created additional schema.org structured data for educational resources
+- Added responsive image attributes (width, height, loading="lazy")
+- Added proper ARIA attributes to navigation and interactive elements
+- Enhanced footer with semantic markup and rel attributes
+- Added preloading for critical assets to improve page load performance
+- Created sitemap reference in robots.txt
+- Added link to XML sitemap in HTML
+- Improved semantic markup for the main content sections
+- Applied consistent educationalRole schema across all simulation pages
 - Optimized robots.txt for better crawling
 - Added Google Search Console verification file
 - Created structured-data.json with comprehensive site schema

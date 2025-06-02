@@ -9,10 +9,14 @@
       "description": "Interactive Physics & Science Simulations",
       "publisher": {
         "@id": "https://simulations.science/#organization"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://simulations.science/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
       }
     },
-    {
-      "@type": "Organization",
+    {      "@type": "EducationalOrganization",
       "@id": "https://simulations.science/#organization",
       "name": "Simulations.Science",
       "url": "https://simulations.science/",
@@ -25,33 +29,69 @@
       },
       "sameAs": [
         "https://github.com/GlenAlan"
-      ]
+      ],
+      "audience": {
+        "@type": "EducationalAudience",
+        "educationalRole": ["student", "teacher", "researcher"]
+      }
     },
-    {
-      "@type": "ItemList",
+    {      "@type": "ItemList",
       "@id": "https://simulations.science/#simulations",
       "name": "Physics Simulations",
       "itemListElement": [
         {
           "@type": "ListItem",
           "position": 1,
-          "@id": "https://simulations.science/conduction_simulation.html",
-          "url": "https://simulations.science/conduction_simulation.html",
-          "name": "Heat Conduction Simulation"
+          "item": {
+            "@type": "LearningResource",
+            "name": "Heat Conduction Simulation",
+            "description": "A lattice of atoms which vibrate and transfer thermal energy through direct molecular interaction",
+            "url": "https://simulations.science/conduction_simulation.html",
+            "image": "https://simulations.science/images/conduct.png",
+            "learningResourceType": "Simulation",
+            "audience": {
+              "@type": "EducationalAudience",
+              "educationalRole": ["student", "teacher", "researcher"]
+            },
+            "educationalLevel": "High School and Above",
+            "isAccessibleForFree": true
+          }
         },
         {
           "@type": "ListItem",
           "position": 2,
-          "@id": "https://simulations.science/convection_simulation.html",
-          "url": "https://simulations.science/convection_simulation.html",
-          "name": "Convection Simulation"
+          "item": {
+            "@type": "LearningResource",
+            "name": "Convection Simulation",
+            "description": "A simple box of fluid which responds to heating and cooling, demonstrating thermal energy transfer",
+            "url": "https://simulations.science/convection_simulation.html",
+            "image": "https://simulations.science/images/pic00.png",
+            "learningResourceType": "Simulation",
+            "audience": {
+              "@type": "EducationalAudience",
+              "educationalRole": ["student", "teacher", "researcher"]
+            },
+            "educationalLevel": "High School and Above",
+            "isAccessibleForFree": true
+          }
         },
         {
           "@type": "ListItem",
           "position": 3,
-          "@id": "https://simulations.science/maxwell_demon_simulation.html",
-          "url": "https://simulations.science/maxwell_demon_simulation.html",
-          "name": "Maxwell's Demon Simulation"
+          "item": {
+            "@type": "LearningResource",
+            "name": "Maxwell's Demon Simulation",
+            "description": "A box of particles with a gate controlled by a demon, exploring entropy and the second law of thermodynamics",
+            "url": "https://simulations.science/maxwell_demon_simulation.html",
+            "image": "https://simulations.science/images/maxwell.png",
+            "learningResourceType": "Simulation",
+            "audience": {
+              "@type": "EducationalAudience",
+              "educationalRole": ["student", "teacher", "researcher"]
+            },
+            "educationalLevel": "College and Above",
+            "isAccessibleForFree": true
+          }
         }
       ]
     }

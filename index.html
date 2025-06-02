@@ -4,7 +4,8 @@
 	html5up.net | @ajlkn
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 -->
-<html>	<head>
+<html lang="en">
+	<head>
 		<title>Simulations.Science | Interactive Physics & Science Simulations</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
@@ -13,23 +14,29 @@
 		<meta name="author" content="Simulations.Science" />
 		<meta name="robots" content="index, follow" />
 		<meta name="google-site-verification" content="CVcwzc-GcF9qDsCzbtlM0cr8-Q7cZVzD9H_ch3Xf32E" />
-		
+		<meta name="format-detection" content="telephone=no">
+		<meta http-equiv="x-ua-compatible" content="ie=edge">		<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+		<link rel="preload" href="assets/css/main.css" as="style">
+		<link rel="preload" href="assets/js/jquery.min.js" as="script">
+		<link rel="preload" href="images/favicon.svg" as="image">
 		<!-- Open Graph / Facebook -->
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content="https://simulations.science/" />
 		<meta property="og:title" content="Simulations.Science | Interactive Physics & Science Simulations" />
 		<meta property="og:description" content="Explore interactive physics simulations that make complex concepts tangible and intuitive. Perfect for education and curious minds." />
-		<meta property="og:image" content="https://simulations.science/images/favicon.svg" />
+		<meta property="og:image" content="https://simulations.science/images/pic00.png" />
+		<meta property="og:image:alt" content="Physics simulation preview" />
+		<meta property="og:site_name" content="Simulations.Science" />
 		
 		<!-- Twitter -->
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:url" content="https://simulations.science/" />
-		<meta name="twitter:title" content="Simulations.Science | Interactive Physics Simulations" />
-		<meta name="twitter:description" content="Interactive physics simulations that make complex concepts easy to understand." />
-		<meta name="twitter:image" content="https://simulations.science/images/favicon.svg" />
-		
-		<!-- Canonical URL -->
+		<meta name="twitter:title" content="Simulations.Science | Interactive Physics & Science Simulations" />
+		<meta name="twitter:description" content="Explore interactive physics simulations that make complex concepts tangible and intuitive. Perfect for education and curious minds." />
+		<meta name="twitter:image" content="https://simulations.science/images/pic00.png" />
+				<!-- Canonical URL -->
 		<link rel="canonical" href="https://simulations.science/" />
+		<link rel="sitemap" type="application/xml" title="Sitemap" href="https://simulations.science/sitemap.xml" />
 		
 		<!-- Structured Data for Organization -->
 		<script type="application/ld+json">
@@ -40,7 +47,23 @@
 			"url": "https://simulations.science/",
 			"logo": "https://simulations.science/images/favicon.svg",
 			"description": "Interactive physics and science simulations that make complex concepts easy to understand.",
-			"sameAs": ["https://github.com/GlenAlan"]
+			"sameAs": ["https://github.com/GlenAlan"],
+			"audience": {
+				"@type": "EducationalAudience",
+				"educationalRole": ["student", "teacher", "researcher"]
+			},
+			"offers": [
+				{
+					"@type": "Offer",
+					"itemOffered": {
+						"@type": "LearningResource",
+						"name": "Interactive Physics Simulations",
+						"learningResourceType": "Simulation"
+					},
+					"price": "0",
+					"priceCurrency": "USD"
+				}
+			]
 		}
 		</script>
 		
@@ -56,8 +79,23 @@
 				"@type": "SearchAction",
 				"target": "https://simulations.science/?search={search_term_string}",
 				"query-input": "required name=search_term_string"
-			}
-		}		</script>
+			}		}		</script>
+		
+		<!-- BreadcrumbList structured data for homepage -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "BreadcrumbList",
+			"itemListElement": [
+				{
+					"@type": "ListItem",
+					"position": 1,
+					"name": "Home",
+					"item": "https://simulations.science/"
+				}
+			]
+		}
+		</script>
 		
 		<!-- Reference to structured data file -->
 		<link rel="alternate" type="application/ld+json" href="/structured-data.json">
@@ -92,8 +130,7 @@
 
 				<!-- Header -->
 					<header id="header">
-						<div class="inner">							<!-- Logo -->
-								<a href="index.html" class="logo">
+						<div class="inner">							<!-- Logo -->								<a href="index.html" class="logo" aria-label="Simulations.Science Home">
 									<span class="symbol"><img src="images/favicon.svg" alt="Simulations.Science logo" /></span><span class="title">Simulations.Science</span>
 								</a>
 
@@ -111,30 +148,26 @@
 								</nav>
 
 						</div>
-					</header>
-
-				<!-- Menu -->					<nav id="menu">
+					</header>				<!-- Menu -->					<nav id="menu" itemscope itemtype="https://schema.org/SiteNavigationElement">
 						<h2>Menu</h2>
 						<ul>
-							<li><a href="index.html">Home</a></li>
-							<li><a href="convection_simulation.html">Convection</a></li>
-							<li><a href="conduction_simulation.html">Conduction</a></li>
-							<li><a href="maxwell_demon_simulation.html">Maxwell's Demon</a></li>
-							<li><a href="sitemap.html">Sitemap</a></li>
+							<li itemprop="name"><a href="index.html" itemprop="url">Home</a></li>
+							<li itemprop="name"><a href="convection_simulation.html" itemprop="url">Convection</a></li>
+							<li itemprop="name"><a href="conduction_simulation.html" itemprop="url">Conduction</a></li>
+							<li itemprop="name"><a href="maxwell_demon_simulation.html" itemprop="url">Maxwell's Demon</a></li>
+							<li itemprop="name"><a href="sitemap.html" itemprop="url">Sitemap</a></li>
 						</ul>
 					</nav>
 
 				<!-- Main -->
-					<div id="main">
-						<div class="inner">							<header>
+					<div id="main">						<div class="inner">							<header>
 								<h1>Interactive Science Playground<br />
 								<!-- by <a href="https://glen-alan.com">Glen Alan</a>.--> </h1>
-								<p>Welcome to <a href="index.html"><strong>simulations.science</strong></a>, your interactive physics and science playground. We offer a collection of elegant and easy-to-use simulations designed to make complex scientific concepts tangible and intuitive. Our interactive tools help students, teachers, and science enthusiasts visualize phenomena like heat conduction, convection, and thermodynamics. Whether you're studying physics, teaching science, or simply curious about how the world works, our tools are here to help you explore, experiment, and experience science in a whole new way.</p>
+								<p itemprop="description">Welcome to <a href="index.html"><strong>simulations.science</strong></a>, your interactive physics and science playground. We offer a collection of elegant and easy-to-use simulations designed to make complex scientific concepts tangible and intuitive. Our interactive tools help students, teachers, and science enthusiasts visualize phenomena like heat conduction, convection, and thermodynamics. Whether you're studying physics, teaching science, or simply curious about how the world works, our tools are here to help you explore, experiment, and experience science in a whole new way.</p>
 								<!-- <p>Simulations.science brings science to life through clear, elegant, and interactive tools. We help students, teachers, and curious learners grasp complex concepts intuitively and tangibly. Dive in to spark curiosity and experience the joy of scientific discovery</p>-->
-							</header>							<section class="tiles">
-								<article class="style1">
+							</header><section class="tiles">								<article class="style1">
 									<span class="image">
-										<img src="images/pic00.png" alt="Convection simulation showing fluid movement" />
+										<img src="images/pic00.png" alt="Convection simulation showing fluid movement" loading="lazy" />
 									</span>
 									<a href="convection_simulation.html">
 										<h2>Convection</h2>
@@ -142,10 +175,9 @@
 											<p>A simple box of fluid which responds to heating and cooling, demonstrating thermal energy transfer</p>
 										</div>
 									</a>
-								</article>
-								<article class="style2">
+								</article>								<article class="style2">
 									<span class="image">
-										<img src="images/conduct.png" alt="Conduction simulation showing atomic heat transfer" />
+										<img src="images/conduct.png" alt="Conduction simulation showing atomic heat transfer" loading="lazy" />
 									</span>
 									<a href="conduction_simulation.html">
 										<h2>Conduction</h2>
@@ -153,21 +185,18 @@
 											<p>A lattice of atoms which vibrate and transfer thermal energy through direct molecular interaction</p>
 										</div>
 									</a>
-								</article>
-								<article class="style3">
+								</article>								<article class="style3">
 									<span class="image">
-										<img src="images/pic03.jpg" alt="Radiation heat transfer simulation" />
-									</span>
-									<a href="index.html">
+										<img src="images/pic03.jpg" alt="Radiation heat transfer simulation" loading="lazy" />
+									</span><a href="#coming-soon" aria-disabled="true" class="coming-soon" aria-label="Radiation simulation coming soon">
 										<h2>Radiation</h2>
 										<div class="content">
 											<p>Coming soon: Explore how thermal energy transfers through electromagnetic waves without a medium</p>
 										</div>
 									</a>
-								</article>
-								<article class="style4">
+								</article>								<article class="style4">
 									<span class="image">
-										<img src="images/maxwell.png" alt="Maxwell's Demon simulation with particles and gate" />
+										<img src="images/maxwell.png" alt="Maxwell's Demon simulation with particles and gate" loading="lazy" />
 									</span>
 									<a href="maxwell_demon_simulation.html">
 										<h2>Maxwell's Demon</h2>
@@ -175,23 +204,19 @@
 											<p>A box of particles with a gate controlled by a demon, exploring entropy and the second law of thermodynamics</p>
 										</div>
 									</a>
-								</article>
-								<article class="style5">
+								</article>								<article class="style5">
 									<span class="image">
-										<img src="images/pic05.jpg" alt="Buoyancy simulation with floating objects" />
-									</span>
-									<a href="index.html">
+										<img src="images/pic05.jpg" alt="Buoyancy simulation with floating objects" loading="lazy" />
+									</span><a href="#coming-soon" aria-disabled="true" class="coming-soon" aria-label="Buoyancy simulation coming soon">
 										<h2>Buoyancy</h2>
 										<div class="content">
 											<p>Coming soon: Investigate the upward force that fluids exert on submerged objects and Archimedes' principle</p>
 										</div>
 									</a>
-								</article>
-								<article class="style6">
+								</article>								<article class="style6">
 									<span class="image">
-										<img src="images/pic06.jpg" alt="Pressure simulation showing force distribution" />
-									</span>
-									<a href="index.html">
+										<img src="images/pic06.jpg" alt="Pressure simulation showing force distribution" loading="lazy" />
+									</span><a href="#coming-soon" aria-disabled="true" class="coming-soon" aria-label="Pressure simulation coming soon">
 										<h2>Pressure</h2>
 										<div class="content">
 											<p>Coming soon: Explore how force distributes over area in various states of matter and practical applications</p>
@@ -200,20 +225,18 @@
 								</article>
 							</section>
 						</div>
-					</div>
-
-				<!-- Footer -->
+					</div>				<!-- Footer -->
 					<footer id="footer">
 						<div class="inner">
 							<section>
-								<h2>Other stuff</h2>
+								<h2>Connect</h2>
 								<ul class="icons">
-									<li><a href="https://glen-alan.com/" class="icon solid style2 fa-globe"><span class="label">Dribbble</span></a></li>
-									<li><a href="https://github.com/GlenAlan" class="icon brands style2 fa-github"><span class="label">GitHub</span></a></li>
+									<li><a href="https://glen-alan.com/" class="icon solid style2 fa-globe" rel="author" aria-label="Visit author's website"><span class="label">Website</span></a></li>
+									<li><a href="https://github.com/GlenAlan" class="icon brands style2 fa-github" rel="external" aria-label="Visit GitHub profile"><span class="label">GitHub</span></a></li>
 								</ul>
 							</section>
 							<ul class="copyright">
-								<li>&copy; Glen Pearce. All rights reserved</li><li>Web template from: <a href="http://html5up.net">HTML5 UP</a></li>
+								<li>&copy; <span itemprop="copyrightYear">2025</span> <span itemprop="copyrightHolder">Glen Pearce</span>. All rights reserved</li><li>Web template from: <a href="http://html5up.net" rel="external noopener">HTML5 UP</a></li>
 							</ul>
 						</div>
 					</footer>

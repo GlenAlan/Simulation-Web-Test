@@ -9,5 +9,9 @@ Allow: /index.html
 Allow: /conduction_simulation.html
 Allow: /convection_simulation.html
 Allow: /maxwell_demon_simulation.html
+Allow: /sitemap.html
+
+# Sitemap location
+Sitemap: https://simulations.science/sitemap.xml
 
 Sitemap: https://simulations.science/sitemap.xml

@@ -46,7 +46,7 @@ let canvasWidth = 800, canvasHeight = 400; // Default, will be updated
 const baseDt = 0.005;     // Base physics timestep for one sub-step
 const kR = 0.5; // Restoring force constant
 // kN is now a let variable, initialized above
-const colorSmooth = 0.97; // Smoothing factor for particle color based on amplitude
+const colorSmooth = 0.98; // Smoothing factor for particle color based on amplitude
 
 // Frame-rate independent timing
 let lastTimestamp = 0; // Already present, ensure it's used correctly

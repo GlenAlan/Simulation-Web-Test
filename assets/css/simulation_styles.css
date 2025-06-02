@@ -613,8 +613,8 @@ body.sim-fullscreen-active .simulation-main-content {
     flex-direction: column; /* Stack children (canvas container, charts) vertically */
     align-items: center; /* Center children horizontally */
     justify-content: center; /* Center the block of children vertically */
-    /* Responsive padding that scales with viewport */
-    padding: max(20px, 2vh) max(10px, 1vw) max(60px, 8vh) max(10px, 1vw);
+    /* Minimal padding to avoid buttons and provide breathing room */
+    padding: 10px 10px 60px 10px; /* Top/sides minimal, bottom for info bar */
     box-sizing: border-box;
     position: relative;
     overflow: hidden; /* Prevent scrollbars in fullscreen mode */
@@ -622,25 +622,27 @@ body.sim-fullscreen-active .simulation-main-content {
 
 /* Simulation display container - now uses viewport-based sizing */
 body.sim-fullscreen-active .simulation-display-container {
-    /* Container size is based on available viewport space minus padding */
+    /* Remove max-width constraint for fullscreen - let it use available space */
     width: 100%;
     height: 100%;
+    max-width: none; /* Override the 750px limit in fullscreen */
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0; /* Don't shrink when charts are present */
     box-sizing: border-box;
+    margin: 0; /* Remove margins in fullscreen */
 }
 
 /* Canvas wrapper - uses CSS for aspect ratio calculations */
 body.sim-fullscreen-active .sim-canvas-wrapper {
-    /* Use CSS to calculate maximum size while preserving aspect ratio */
-    width: min(100%, calc(100vh * var(--aspect-ratio, 1)));
-    height: min(100%, calc(100vw / var(--aspect-ratio, 1)));
+    /* Maximize size while preserving aspect ratio and allowing for buttons/UI */
+    width: min(calc(100vw - 100px), calc((100vh - 120px) * var(--aspect-ratio, 2)));
+    height: min(calc(100vh - 120px), calc((100vw - 100px) / var(--aspect-ratio, 2)));
     
-    /* Ensure it stays within reasonable bounds */
-    max-width: min(95vw, calc(95vh * var(--aspect-ratio, 1)));
-    max-height: min(95vh, calc(95vw / var(--aspect-ratio, 1)));
+    /* Ensure it stays within reasonable bounds while maximizing space usage */
+    max-width: calc(100vw - 100px); /* Leave space for settings panel toggle and other UI */
+    max-height: calc(100vh - 120px); /* Leave space for info bar and minimal padding */
     
     display: flex;
     align-items: center;
@@ -653,7 +655,7 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
     /* Use full size of wrapper, let CSS aspect-ratio handle the rest */
     width: 100%;
     height: 100%;
-    aspect-ratio: var(--aspect-ratio, 1);
+    aspect-ratio: var(--aspect-ratio, 2);
     
     /* Remove padding-bottom trick for fullscreen */
     padding-bottom: 0 !important;
@@ -683,6 +685,18 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
         left: auto; /* Ensure it doesn't stick to 50% */
         transform: none; /* Remove translateX */
         /* top and right are set by JS based on --sim-button-offset */
+    }
+
+    /* On mobile, use even less padding and more space for simulation */
+    body.sim-fullscreen-active .simulation-main-content {
+        padding: 5px 5px 55px 5px; /* Minimal padding on mobile */
+    }
+      body.sim-fullscreen-active .sim-canvas-wrapper {
+        /* On mobile, use almost the full screen with minimal margins */
+        width: min(calc(100vw - 60px), calc((100vh - 100px) * var(--aspect-ratio, 2)));
+        height: min(calc(100vh - 100px), calc((100vw - 60px) / var(--aspect-ratio, 2)));
+        max-width: calc(100vw - 60px);
+        max-height: calc(100vh - 100px);
     }
 
     .sim-controls-panel {

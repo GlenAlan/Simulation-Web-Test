@@ -103,19 +103,48 @@ class Photon {
             }
         }
     }
-    
-    render() {
+      render() {
         if (this.absorbed) return;
         
-        // Color based on energy (temperature)
-        const normalizedEnergy = Math.min(this.energy / 100, 1);
-        const hue = (1 - normalizedEnergy) * 240; // Blue to red
-        const alpha = Math.max(0.3, 1 - this.age / this.maxAge);
+        // Color based on energy (temperature) - more realistic photon colors
+        const normalizedEnergy = Math.min(this.energy / 150, 1);
         
-        ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${alpha})`;
+        // Create more realistic thermal radiation colors
+        let hue, saturation, lightness;
+        if (normalizedEnergy < 0.3) {
+            // Infrared - deep red
+            hue = 0;
+            saturation = 80;
+            lightness = 30 + normalizedEnergy * 30;
+        } else if (normalizedEnergy < 0.7) {
+            // Red to orange to yellow
+            hue = normalizedEnergy * 60;
+            saturation = 100;
+            lightness = 50 + normalizedEnergy * 20;
+        } else {
+            // Yellow to white (high energy)
+            hue = 60;
+            saturation = 100 - (normalizedEnergy - 0.7) * 200;
+            lightness = 70 + (normalizedEnergy - 0.7) * 30;
+        }
+        
+        const alpha = Math.max(0.4, 1 - this.age / this.maxAge);
+        
+        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+        
+        // Size based on energy - higher energy photons are slightly larger
+        const radius = 1.5 + normalizedEnergy * 1.5;
+        ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
         ctx.fill();
+        
+        // Add a subtle glow for high-energy photons
+        if (normalizedEnergy > 0.6) {
+            ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, radius + 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 }
 
@@ -143,31 +172,35 @@ function adaptSimulationToResize(oldWidth, oldHeight, newWidth, newHeight) {
 
 function emitPhotons() {
     // Calculate emission rate based on Stefan-Boltzmann law (simplified)
+    // Stefan-Boltzmann law: Power ∝ T^4
     const baseEmissionRate = Math.pow(temperature / 300, 4) * (intensity / 100);
-    const photonsPerFrame = baseEmissionRate * 0.5; // Adjust for visual appeal
+    const photonsPerFrame = baseEmissionRate * 0.8; // Adjusted for better visualization
     
     // Emit photons from random points on the source surface
-    for (let i = 0; i < photonsPerFrame; i++) {
-        if (Math.random() < photonsPerFrame - Math.floor(photonsPerFrame)) {
-            const angle = Math.random() * Math.PI * 2;
-            const sourceRadius = SOURCE_RADIUS * Math.sqrt(Math.random()); // Uniform distribution in circle
-            const sourceAngle = Math.random() * Math.PI * 2;
-            
-            const startX = SOURCE_X + Math.cos(sourceAngle) * sourceRadius;
-            const startY = canvasHeight / 2 + Math.sin(sourceAngle) * sourceRadius;
-            
-            // Random emission direction (all directions)
-            const emissionAngle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 3;
-            const vx = Math.cos(emissionAngle) * speed;
-            const vy = Math.sin(emissionAngle) * speed;
-            
-            // Energy based on temperature (Wien's displacement law approximation)
-            const energy = temperature / 10 + Math.random() * 20;
-            
-            photons.push(new Photon(startX, startY, vx, vy, energy));
-            totalPhotonsEmitted++;
-        }
+    const numPhotonsToEmit = Math.floor(photonsPerFrame) + (Math.random() < (photonsPerFrame % 1) ? 1 : 0);
+    
+    for (let i = 0; i < numPhotonsToEmit; i++) {
+        // Random point on source surface (uniform distribution in circle)
+        const sourceRadius = SOURCE_RADIUS * Math.sqrt(Math.random());
+        const sourceAngle = Math.random() * Math.PI * 2;
+        
+        const startX = SOURCE_X + Math.cos(sourceAngle) * sourceRadius;
+        const startY = canvasHeight / 2 + Math.sin(sourceAngle) * sourceRadius;
+        
+        // Random emission direction (isotropic radiation - all directions equally likely)
+        const emissionAngle = Math.random() * Math.PI * 2;
+        const speed = 2.5 + Math.random() * 2.5; // Variable photon speed for realism
+        const vx = Math.cos(emissionAngle) * speed;
+        const vy = Math.sin(emissionAngle) * speed;
+        
+        // Energy based on temperature (Wien's displacement law approximation)
+        // Higher temperature = higher average photon energy
+        const baseEnergy = temperature / 8;
+        const energyVariation = Math.random() * baseEnergy * 0.6;
+        const energy = baseEnergy + energyVariation;
+        
+        photons.push(new Photon(startX, startY, vx, vy, energy));
+        totalPhotonsEmitted++;
     }
 }
 
@@ -235,9 +268,27 @@ function drawAbsorptionObject() {
     const objectY = (canvasHeight - OBJECT_HEIGHT) / 2;
     const material = MATERIAL_PROPERTIES[objectType];
     
-    // Draw object
+    // Calculate absorbed energy rate for visual feedback
+    const energyAbsorptionRate = absorbedEnergy / (totalPhotonsEmitted || 1) * 100;
+    
+    // Draw object with energy absorption visual effect
     ctx.fillStyle = material.color;
     ctx.fillRect(objectX, objectY, OBJECT_WIDTH, OBJECT_HEIGHT);
+    
+    // Add heat glow effect based on absorbed energy
+    if (absorbedEnergy > 50) {
+        const glowIntensity = Math.min(absorbedEnergy / 500, 1);
+        const glowAlpha = glowIntensity * 0.4;
+        
+        for (let i = 1; i <= 3; i++) {
+            ctx.fillStyle = `rgba(255, 100, 0, ${glowAlpha / i})`;
+            ctx.fillRect(objectX - i * 2, objectY - i * 2, OBJECT_WIDTH + i * 4, OBJECT_HEIGHT + i * 4);
+        }
+        
+        // Redraw the main object
+        ctx.fillStyle = material.color;
+        ctx.fillRect(objectX, objectY, OBJECT_WIDTH, OBJECT_HEIGHT);
+    }
     
     // Draw object outline
     ctx.strokeStyle = '#FFFFFF';
@@ -249,6 +300,11 @@ function drawAbsorptionObject() {
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(material.name, objectX + OBJECT_WIDTH / 2, objectY + OBJECT_HEIGHT + 15);
+    
+    // Absorption percentage indicator
+    ctx.fillStyle = '#FFFF00';
+    ctx.font = '10px Arial';
+    ctx.fillText(`${(material.absorption * 100).toFixed(0)}% abs`, objectX + OBJECT_WIDTH / 2, objectY + OBJECT_HEIGHT + 30);
 }
 
 function drawDistanceLine() {
@@ -276,12 +332,32 @@ function drawDistanceLine() {
 function computeAndDisplayData() {
     if (!absorbedEnergyDisplay || !emissionRateDisplay) return;
     
-    // Calculate emission rate (photons per second)
-    const emissionRate = Math.pow(temperature / 300, 4) * (intensity / 100) * 30;
+    // Calculate emission rate (photons per second) - more accurate
+    const stefanBoltzmannRate = Math.pow(temperature / 300, 4);
+    const emissionRate = stefanBoltzmannRate * (intensity / 100) * 48; // Scaled for display
     
-    // Update displays
+    // Calculate inverse square law effect on intensity
+    const distance = objectDistance - SOURCE_X - SOURCE_RADIUS;
+    const inverseSquareFactor = Math.pow(100 / Math.max(distance, 50), 2);
+    const effectiveIntensity = inverseSquareFactor * 100;
+    
+    // Update displays with better formatting
     absorbedEnergyDisplay.textContent = absorbedEnergy.toFixed(1);
     emissionRateDisplay.textContent = emissionRate.toFixed(0);
+    
+    // Add distance and intensity info to existing display elements
+    const infoBar = document.querySelector('.sim-info-bar');
+    if (infoBar && !document.getElementById('distanceInfo')) {
+        const distanceInfo = document.createElement('span');
+        distanceInfo.id = 'distanceInfo';
+        distanceInfo.className = 'sim-info-item';
+        infoBar.insertBefore(distanceInfo, infoBar.lastElementChild);
+    }
+    
+    const distanceInfoElement = document.getElementById('distanceInfo');
+    if (distanceInfoElement) {
+        distanceInfoElement.innerHTML = `Distance: ${distance.toFixed(0)}px | Intensity: ${effectiveIntensity.toFixed(1)}%`;
+    }
 }
 
 // --- Main Animation Loop ---

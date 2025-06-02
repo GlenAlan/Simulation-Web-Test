@@ -12,18 +12,18 @@
 		<script>
 			// Theme toggle script
 			(function() {
-				var theme = 'light'; // Default theme
+				var theme = 'dark'; // Default theme is now dark
 				try {
 					var storedTheme = localStorage.getItem('theme');
 					if (storedTheme) {
-						theme = storedTheme;
-					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-						theme = 'dark';
+						theme = storedTheme; // Override with stored theme if it exists
 					}
 				} catch (e) { /* Ignore */ }
 
 				if (theme === 'dark') {
 					document.documentElement.classList.add('dark-mode');
+				} else {
+					document.documentElement.classList.remove('dark-mode');
 				}
 			})();
 		</script>

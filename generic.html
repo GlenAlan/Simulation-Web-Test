@@ -11,13 +11,11 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<script>
 			(function() {
-				var theme = 'light'; // Default theme
+				var theme = 'dark'; // Default theme is now dark
 				try {
 					var storedTheme = localStorage.getItem('theme');
 					if (storedTheme) {
-						theme = storedTheme;
-					} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-						theme = 'dark';
+						theme = storedTheme; // Override with stored theme if it exists
 					}
 				} catch (e) {
 					// Ignore errors (e.g., localStorage disabled)
@@ -27,7 +25,7 @@
 					document.documentElement.classList.add('dark-mode');
 				} else {
 					// Optional: Ensure 'dark-mode' is not present if light is determined.
-					// document.documentElement.classList.remove('dark-mode');
+					document.documentElement.classList.remove('dark-mode');
 					// The main.js will add 'light-mode' class later if needed.
 				}
 			})();

@@ -409,15 +409,15 @@ function renderSimulation() {
         ctx.moveTo(centerX, gateY1);
         ctx.lineTo(centerX, gateY2);
         ctx.stroke(); 
-    } else {
-        ctx.strokeStyle = 'purple'; // Changed to purple
-        ctx.setLineDash([2, 2]);
-        ctx.beginPath();
-        ctx.moveTo(centerX, gateY1);
-        ctx.lineTo(centerX, gateY2);
-        ctx.stroke();
-        ctx.setLineDash([]); 
-    }
+    } //else {
+      //  ctx.strokeStyle = 'purple'; // Changed to purple
+      //  ctx.setLineDash([2, 2]);
+      //  ctx.beginPath();
+      //  ctx.moveTo(centerX, gateY1);
+      //  ctx.lineTo(centerX, gateY2);
+      //  ctx.stroke();
+      //  ctx.setLineDash([]); 
+    //}
 
     let leftRed = 0, leftBlue = 0, rightRed = 0, rightBlue = 0;
 

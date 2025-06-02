@@ -4,11 +4,63 @@
 	html5up.net | @ajlkn
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 -->
-<html>
-	<head>
-		<title>Simulations.Science</title>
+<html>	<head>
+		<title>Simulations.Science | Interactive Physics & Science Simulations</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<meta name="description" content="Interactive physics and science simulations that make complex concepts like convection, conduction, thermodynamics, and Maxwell's Demon easy to understand. Perfect for students, teachers, and science enthusiasts." />
+		<meta name="keywords" content="physics simulations, interactive science, convection simulation, conduction simulation, maxwell's demon, thermodynamics, heat transfer, physics education, science learning, interactive education" />
+		<meta name="author" content="Simulations.Science" />
+		<meta name="robots" content="index, follow" />
+		<meta name="google-site-verification" content="CVcwzc-GcF9qDsCzbtlM0cr8-Q7cZVzD9H_ch3Xf32E" />
+		
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://simulations.science/" />
+		<meta property="og:title" content="Simulations.Science | Interactive Physics & Science Simulations" />
+		<meta property="og:description" content="Explore interactive physics simulations that make complex concepts tangible and intuitive. Perfect for education and curious minds." />
+		<meta property="og:image" content="https://simulations.science/images/favicon.svg" />
+		
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:url" content="https://simulations.science/" />
+		<meta name="twitter:title" content="Simulations.Science | Interactive Physics Simulations" />
+		<meta name="twitter:description" content="Interactive physics simulations that make complex concepts easy to understand." />
+		<meta name="twitter:image" content="https://simulations.science/images/favicon.svg" />
+		
+		<!-- Canonical URL -->
+		<link rel="canonical" href="https://simulations.science/" />
+		
+		<!-- Structured Data for Organization -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "EducationalOrganization",
+			"name": "Simulations.Science",
+			"url": "https://simulations.science/",
+			"logo": "https://simulations.science/images/favicon.svg",
+			"description": "Interactive physics and science simulations that make complex concepts easy to understand.",
+			"sameAs": ["https://github.com/GlenAlan"]
+		}
+		</script>
+		
+		<!-- Structured Data for WebSite -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "WebSite",
+			"name": "Simulations.Science",
+			"url": "https://simulations.science/",
+			"description": "Interactive physics and science simulations for education",
+			"potentialAction": {
+				"@type": "SearchAction",
+				"target": "https://simulations.science/?search={search_term_string}",
+				"query-input": "required name=search_term_string"
+			}
+		}		</script>
+		
+		<!-- Reference to structured data file -->
+		<link rel="alternate" type="application/ld+json" href="/structured-data.json">
 		<script>
 			(function() {
 				var theme = 'dark'; // Default theme is now dark
@@ -40,11 +92,9 @@
 
 				<!-- Header -->
 					<header id="header">
-						<div class="inner">
-
-							<!-- Logo -->
+						<div class="inner">							<!-- Logo -->
 								<a href="index.html" class="logo">
-									<span class="symbol"><img src="images/favicon.svg" alt="" /></span><span class="title">Simulations.Science</span>
+									<span class="symbol"><img src="images/favicon.svg" alt="Simulations.Science logo" /></span><span class="title">Simulations.Science</span>
 								</a>
 
 							<!-- Nav -->
@@ -63,91 +113,88 @@
 						</div>
 					</header>
 
-				<!-- Menu -->
-					<nav id="menu">
+				<!-- Menu -->					<nav id="menu">
 						<h2>Menu</h2>
 						<ul>
 							<li><a href="index.html">Home</a></li>
 							<li><a href="convection_simulation.html">Convection</a></li>
 							<li><a href="conduction_simulation.html">Conduction</a></li>
 							<li><a href="maxwell_demon_simulation.html">Maxwell's Demon</a></li>
+							<li><a href="sitemap.html">Sitemap</a></li>
 						</ul>
 					</nav>
 
 				<!-- Main -->
 					<div id="main">
-						<div class="inner">
-							<header>
+						<div class="inner">							<header>
 								<h1>Interactive Science Playground<br />
 								<!-- by <a href="https://glen-alan.com">Glen Alan</a>.--> </h1>
-								<!-- <p>Welcome to simulations.science, where understanding meets interaction. We provide easy-to-use, elegant simulations designed to make science tangible and intuitive, whether for formal education, virtual lab work, or simply feeding a curious mind. Explore, experiment, and experience science in a way that truly clicks.</p>-->
-								<p>Welcome to <a href="index.html"><strong>simulations.science</strong></a>, your interactive science playground. We offer a collection of elegant and easy-to-use simulations designed to make complex scientific concepts tangible and intuitive. Whether you're a student, teacher, or simply curious, our tools are here to help you explore, experiment, and experience science in a whole new way.</p>
+								<p>Welcome to <a href="index.html"><strong>simulations.science</strong></a>, your interactive physics and science playground. We offer a collection of elegant and easy-to-use simulations designed to make complex scientific concepts tangible and intuitive. Our interactive tools help students, teachers, and science enthusiasts visualize phenomena like heat conduction, convection, and thermodynamics. Whether you're studying physics, teaching science, or simply curious about how the world works, our tools are here to help you explore, experiment, and experience science in a whole new way.</p>
 								<!-- <p>Simulations.science brings science to life through clear, elegant, and interactive tools. We help students, teachers, and curious learners grasp complex concepts intuitively and tangibly. Dive in to spark curiosity and experience the joy of scientific discovery</p>-->
-							</header>
-							<section class="tiles">
+							</header>							<section class="tiles">
 								<article class="style1">
 									<span class="image">
-										<img src="images/pic00.png" alt="" />
+										<img src="images/pic00.png" alt="Convection simulation showing fluid movement" />
 									</span>
 									<a href="convection_simulation.html">
 										<h2>Convection</h2>
 										<div class="content">
-											<p>A simple box of fluid which responds to heating and cooling</p>
+											<p>A simple box of fluid which responds to heating and cooling, demonstrating thermal energy transfer</p>
 										</div>
 									</a>
 								</article>
 								<article class="style2">
 									<span class="image">
-										<img src="images/conduct.png" alt="" />
+										<img src="images/conduct.png" alt="Conduction simulation showing atomic heat transfer" />
 									</span>
 									<a href="conduction_simulation.html">
 										<h2>Conduction</h2>
 										<div class="content">
-											<p>A lattice of atoms which vibrate and transfer thermal energy</p>
+											<p>A lattice of atoms which vibrate and transfer thermal energy through direct molecular interaction</p>
 										</div>
 									</a>
 								</article>
 								<article class="style3">
 									<span class="image">
-										<img src="images/pic03.jpg" alt="" />
+										<img src="images/pic03.jpg" alt="Radiation heat transfer simulation" />
 									</span>
 									<a href="index.html">
 										<h2>Radiation</h2>
 										<div class="content">
-											<p>Sed nisl arcu euismod sit amet nisi lorem etiam dolor veroeros et feugiat.</p>
+											<p>Coming soon: Explore how thermal energy transfers through electromagnetic waves without a medium</p>
 										</div>
 									</a>
 								</article>
 								<article class="style4">
 									<span class="image">
-										<img src="images/maxwell.png" alt="" />
+										<img src="images/maxwell.png" alt="Maxwell's Demon simulation with particles and gate" />
 									</span>
 									<a href="maxwell_demon_simulation.html">
 										<h2>Maxwell's Demon</h2>
 										<div class="content">
-											<p>A box of particles with a gate controlled by a demon</p>
+											<p>A box of particles with a gate controlled by a demon, exploring entropy and the second law of thermodynamics</p>
 										</div>
 									</a>
 								</article>
 								<article class="style5">
 									<span class="image">
-										<img src="images/pic05.jpg" alt="" />
+										<img src="images/pic05.jpg" alt="Buoyancy simulation with floating objects" />
 									</span>
 									<a href="index.html">
 										<h2>Buoyancy</h2>
 										<div class="content">
-											<p>Sed nisl arcu euismod sit amet nisi lorem etiam dolor veroeros et feugiat.</p>
+											<p>Coming soon: Investigate the upward force that fluids exert on submerged objects and Archimedes' principle</p>
 										</div>
 									</a>
 								</article>
 								<article class="style6">
 									<span class="image">
-										<img src="images/pic06.jpg" alt="" />
+										<img src="images/pic06.jpg" alt="Pressure simulation showing force distribution" />
 									</span>
 									<a href="index.html">
 										<h2>Pressure</h2>
 										<div class="content">
-											<p>Sed nisl arcu euismod sit amet nisi lorem etiam dolor veroeros et feugiat.</p>
+											<p>Coming soon: Explore how force distributes over area in various states of matter and practical applications</p>
 										</div>
 									</a>
 								</article>

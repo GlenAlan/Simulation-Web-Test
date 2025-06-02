@@ -1,0 +1,59 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://simulations.science/#website",
+      "url": "https://simulations.science/",
+      "name": "Simulations.Science",
+      "description": "Interactive Physics & Science Simulations",
+      "publisher": {
+        "@id": "https://simulations.science/#organization"
+      }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://simulations.science/#organization",
+      "name": "Simulations.Science",
+      "url": "https://simulations.science/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://simulations.science/images/favicon.svg",
+        "width": 112,
+        "height": 112,
+        "caption": "Simulations.Science Logo"
+      },
+      "sameAs": [
+        "https://github.com/GlenAlan"
+      ]
+    },
+    {
+      "@type": "ItemList",
+      "@id": "https://simulations.science/#simulations",
+      "name": "Physics Simulations",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "@id": "https://simulations.science/conduction_simulation.html",
+          "url": "https://simulations.science/conduction_simulation.html",
+          "name": "Heat Conduction Simulation"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "@id": "https://simulations.science/convection_simulation.html",
+          "url": "https://simulations.science/convection_simulation.html",
+          "name": "Convection Simulation"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "@id": "https://simulations.science/maxwell_demon_simulation.html",
+          "url": "https://simulations.science/maxwell_demon_simulation.html",
+          "name": "Maxwell's Demon Simulation"
+        }
+      ]
+    }
+  ]
+}

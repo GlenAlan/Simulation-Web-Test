@@ -13,5 +13,3 @@ Allow: /sitemap.html
 
 # Sitemap location
 Sitemap: https://simulations.science/sitemap.xml
-
-Sitemap: https://simulations.science/sitemap.xml

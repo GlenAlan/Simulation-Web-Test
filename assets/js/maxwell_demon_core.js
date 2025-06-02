@@ -27,7 +27,7 @@ const fpsDisplay = document.getElementById('fpsDisplay'); // Added FPS display e
 // --- Simulation Constants & Parameters ---
 let nPerColor = particleCountSlider ? +particleCountSlider.value : 100;
 let speedMultiplier = speedSlider ? +speedSlider.value : 50; // Renamed from ticksPerFrame for clarity with new timing
-let gateSize = gateSizeSlider ? +gateSizeSlider.value : 100;
+let gateSizePercent = gateSizeSlider ? +gateSizeSlider.value : 25; // Gate size as percentage (10-90%)
 // let autoMode = autoModeCheckbox ? autoModeCheckbox.checked : true; // Replaced by demonMode
 let demonMode = demonModeSelector ? demonModeSelector.value : 'automatic'; // 'automatic' or 'manual'
 
@@ -137,6 +137,11 @@ class Particle {
     }
 }
 
+// Helper function to calculate gate size in pixels from percentage
+function getGateSizePixels() {
+    return (gateSizePercent / 100) * canvasHeight;
+}
+
 function initializeSimulationState() {
     if (canvasWidth === 0 || canvasHeight === 0) {
         console.warn("Canvas dimensions not set before init. Attempting resize call.");
@@ -222,6 +227,7 @@ function handleWallCollision(p, dtArg) {
 }
 
 function handleBarrierInteraction(p, dtArg) {
+    const gateSize = getGateSizePixels();
     const gateY1 = canvasHeight / 2 - gateSize / 2;
     const gateY2 = canvasHeight / 2 + gateSize / 2;
 
@@ -263,6 +269,7 @@ function handleBarrierInteraction(p, dtArg) {
 
 
 function runSinglePhysicsStep(dtArgument) { 
+    const gateSize = getGateSizePixels();
     const gateY1 = canvasHeight / 2 - gateSize / 2;
     const gateY2 = canvasHeight / 2 + gateSize / 2;
 
@@ -381,6 +388,7 @@ function updateCharts(leftRed, leftBlue, rightRed, rightBlue, realTimestamp, for
 function renderSimulation() { 
     if (!ctx) return;
 
+    const gateSize = getGateSizePixels();
     const gateY1 = canvasHeight / 2 - gateSize / 2;
     const gateY2 = canvasHeight / 2 + gateSize / 2;
 
@@ -393,17 +401,16 @@ function renderSimulation() {
     ctx.moveTo(centerX, 0);
     ctx.lineTo(centerX, gateY1);
     ctx.moveTo(centerX, gateY2);
-    ctx.lineTo(centerX, canvasHeight);
-    ctx.stroke();
+    ctx.lineTo(centerX, canvasHeight);    ctx.stroke();
 
     if (!gateOpen) {
+        ctx.strokeStyle = 'purple'; // Changed to purple
         ctx.beginPath();
         ctx.moveTo(centerX, gateY1);
         ctx.lineTo(centerX, gateY2);
         ctx.stroke(); 
     } else {
-        const openGateColor = getComputedStyle(document.documentElement).getPropertyValue('--color-accent1').trim() || '#89f';
-        ctx.strokeStyle = openGateColor;
+        ctx.strokeStyle = 'purple'; // Changed to purple
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
         ctx.moveTo(centerX, gateY1);
@@ -730,15 +737,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if(speedValEl) speedValEl.textContent = speedMultiplier; // Initial display
     }
-    
-    if (gateSizeSlider) {
+      if (gateSizeSlider) {
         gateSizeSlider.oninput = () => {
-            gateSize = +gateSizeSlider.value;
-            if(gateSizeValEl) gateSizeValEl.textContent = gateSize;
+            gateSizePercent = +gateSizeSlider.value;
+            if(gateSizeValEl) gateSizeValEl.textContent = gateSizePercent;
             // No need to reset, gate size changes dynamically
         };
-        if(gateSizeValEl) gateSizeValEl.textContent = gateSize; // Initial display
-    }    if (showChartsCheckbox && chartsContainer) {
+        if(gateSizeValEl) gateSizeValEl.textContent = gateSizePercent; // Initial display
+    }if (showChartsCheckbox && chartsContainer) {
         showChartsCheckbox.onchange = () => {
             chartsContainer.style.display = showChartsCheckbox.checked ? 'block' : 'none'; // Or 'flex' if that's the desired display type
             

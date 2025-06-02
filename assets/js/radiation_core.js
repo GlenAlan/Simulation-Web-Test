@@ -658,10 +658,10 @@ if (distanceSlider && distanceVal) {
     distanceSlider.oninput = () => {
         objectDistancePercent = parseFloat(distanceSlider.value);
         const distanceM = getActualDistanceMeters();
-        distanceVal.textContent = `${distanceM.toFixed(2)} m`;
+        distanceVal.textContent = `${distanceM.toFixed(2)}`;
     };
     const initialDistanceM = getActualDistanceMeters();
-    distanceVal.textContent = `${initialDistanceM.toFixed(2)} m`;
+    distanceVal.textContent = `${initialDistanceM.toFixed(2)}`;
 }
 
 // Object type selector

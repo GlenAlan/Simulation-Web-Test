@@ -738,12 +738,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // No need to reset, gate size changes dynamically
         };
         if(gateSizeValEl) gateSizeValEl.textContent = gateSize; // Initial display
-    }
-
-    if (showChartsCheckbox && chartsContainer) {
+    }    if (showChartsCheckbox && chartsContainer) {
         showChartsCheckbox.onchange = () => {
             chartsContainer.style.display = showChartsCheckbox.checked ? 'block' : 'none'; // Or 'flex' if that's the desired display type
+            
+            // Add/remove charts-visible class for CSS styling
             if (showChartsCheckbox.checked) {
+                document.body.classList.add('charts-visible');
                 setupCharts(); // Re-setup charts to ensure they are fresh and colors are correct
                 // Force an update with current counts if available
                 const lRed = parseInt(leftRedEl.textContent) || 0;
@@ -751,9 +752,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rRed = parseInt(rightRedEl.textContent) || 0;
                 const rBlue = parseInt(rightBlueEl.textContent) || 0;
                 updateCharts(lRed, lBlue, rRed, rBlue, performance.now(), true);
+            } else {
+                document.body.classList.remove('charts-visible');
             }
-        };
+            
+            // Trigger canvas resize to adjust simulation size when charts are toggled in fullscreen
+            const isFullscreen = document.body.classList.contains('sim-fullscreen-active');
+            if (isFullscreen) {
+                // Use setTimeout to allow charts container to render before resize calculation
+                setTimeout(() => {
+                    handleSimulationResize();
+                }, 50);
+            }        };
         chartsContainer.style.display = showChartsCheckbox.checked ? 'block' : 'none'; // Initial state
+        
+        // Set initial charts-visible class state
+        if (showChartsCheckbox.checked) {
+            document.body.classList.add('charts-visible');
+        } else {
+            document.body.classList.remove('charts-visible');
+        }
     }
 
     if (resetButton) {

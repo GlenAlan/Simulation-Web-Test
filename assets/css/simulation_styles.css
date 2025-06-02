@@ -612,12 +612,18 @@ body.sim-fullscreen-active .simulation-main-content {
     display: flex;
     flex-direction: column; /* Stack children (canvas container, charts) vertically */
     align-items: center; /* Center children horizontally */
-    justify-content: center; /* Center the block of children vertically */
+    justify-content: center; /* Center the block of children vertically when no charts */
     /* Minimal padding to avoid buttons and provide breathing room */
     padding: 10px 10px 60px 10px; /* Top/sides minimal, bottom for info bar */
     box-sizing: border-box;
     position: relative;
     overflow: hidden; /* Prevent scrollbars in fullscreen mode */
+}
+
+/* When charts are visible, change layout to start from top instead of centering */
+body.sim-fullscreen-active.charts-visible .simulation-main-content {
+    justify-content: flex-start; /* Start from top when charts are present */
+    padding-top: 20px; /* Add a bit more top padding when charts are present */
 }
 
 /* Simulation display container - now uses viewport-based sizing */
@@ -640,21 +646,31 @@ body.sim-fullscreen-active .sim-canvas-wrapper {
     /* Base calculations: subtract padding, info bar space, and potential charts space */
     width: min(
         calc(100vw - 100px), 
-        calc((100vh - 110px) * var(--aspect-ratio, 2))
+        calc((100vh - 140px) * var(--aspect-ratio, 2))
     );
     height: min(
-        calc(100vh - 110px), 
+        calc(100vh - 140px), 
         calc((100vw - 100px) / var(--aspect-ratio, 2))
     );
     
     /* Ensure it stays within reasonable bounds */
     max-width: calc(100vw - 50px); /* Leave space for settings panel toggle and other UI */
-    max-height: calc(100vh - 100px); /* Leave space for info bar, padding, and potential charts */
+    max-height: calc(100vh - 120px); /* Leave space for info bar, padding, and potential charts */
     
     display: flex;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
+}
+
+/* When charts are visible, reduce simulation height dynamically */
+body.sim-fullscreen-active.charts-visible .sim-canvas-wrapper {
+    /* Recalculate height accounting for charts (180px + margins ~= 200px) */
+    height: min(
+        calc(100vh - 340px), 
+        calc((100vw - 100px) / var(--aspect-ratio, 2))
+    );
+    max-height: calc(100vh - 320px); /* Reserve space for charts + info bar */
 }
 
 /* Aspect ratio box - simplified for fullscreen */
@@ -692,18 +708,23 @@ body.sim-fullscreen-active .sim-aspect-ratio-box {
         left: auto; /* Ensure it doesn't stick to 50% */
         transform: none; /* Remove translateX */
         /* top and right are set by JS based on --sim-button-offset */
-    }
-
-    /* On mobile, use even less padding and more space for simulation */
+    }    /* On mobile, use even less padding and more space for simulation */
     body.sim-fullscreen-active .simulation-main-content {
         padding: 5px 5px 55px 5px; /* Minimal padding on mobile */
     }
-      body.sim-fullscreen-active .sim-canvas-wrapper {
+    
+    body.sim-fullscreen-active .sim-canvas-wrapper {
         /* On mobile, use almost the full screen with minimal margins */
         width: min(calc(100vw - 60px), calc((100vh - 100px) * var(--aspect-ratio, 2)));
         height: min(calc(100vh - 100px), calc((100vw - 60px) / var(--aspect-ratio, 2)));
         max-width: calc(100vw - 60px);
         max-height: calc(100vh - 100px);
+    }
+    
+    /* When charts are visible on mobile, give even less space to simulation */
+    body.sim-fullscreen-active.charts-visible .sim-canvas-wrapper {
+        height: min(calc(100vh - 260px), calc((100vw - 60px) / var(--aspect-ratio, 2))); /* Account for charts on mobile */
+        max-height: calc(100vh - 260px);
     }
 
     .sim-controls-panel {
@@ -751,15 +772,17 @@ body.sim-fullscreen-active #charts-container {
     width: 100%; /* Takes width from parent's flex column context */
     max-width: 800px; /* Respects original max-width, will be centered by parent's align-items */
     margin-top: 10px; /* Spacing from the simulation display container above */
-    /* margin-bottom is implicitly handled by parent's padding-bottom or if it's the last item */
+    margin-bottom: 10px; /* Add bottom margin to prevent overlap with info bar */
     flex-shrink: 0; /* Its height is determined by its content (.chart-box) */
+    position: relative; /* Ensure proper positioning */
+    z-index: 1; /* Stay above other elements */
 }
 
 /* Styling for the individual chart boxes within the container in fullscreen */
 body.sim-fullscreen-active #charts-container .chart-box {
     /* Inline styles already define width: 48%, position, padding, border-radius. */
     /* Override height and background for fullscreen consistency. */
-    height: 180px; 
+    height: 150px; /* Reduced from 180px to fit better and leave more space */
     background-color: var(--color-bg-alt); 
 }
 

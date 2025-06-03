@@ -92,14 +92,15 @@
 				}
 			]
 		}
-		</script>
-		<script>
+		</script>		<script>
 			(function() {
-				var theme = 'dark'; // Default theme is now dark
+				// Force dark mode by default, only change if explicitly set to light
+				var theme = 'dark'; // Default is dark
 				try {
 					var storedTheme = localStorage.getItem('theme');
-					if (storedTheme) {
-						theme = storedTheme; // Override with stored theme if it exists
+					// Only override if explicitly set to light
+					if (storedTheme === 'light') {
+						theme = 'light'; 
 					}
 				} catch (e) { /* Ignore */ }
 

@@ -118,13 +118,13 @@
 
 			if (!$sunIcon.length || !$moonIcon.length) {
 				console.error('Theme icons not found in toggle button');
-			} else {
-				function getCurrentTheme() {
+			} else {				function getCurrentTheme() {
 					let theme = window.localStorage.getItem('theme');
-					if (theme) {
-						return theme;
+					// Only respect 'light' as a valid stored value, otherwise force dark
+					if (theme === 'light') {
+						return 'light';
 					}
-					return prefersDarkScheme.matches ? 'dark' : 'light';
+					return 'dark'; // Always default to dark mode, ignoring system preferences
 				}
 
 				function loadTheme(theme) {
@@ -154,12 +154,9 @@
 					loadTheme(newTheme);
 				});
 
-				loadTheme(getCurrentTheme());
-
+				loadTheme(getCurrentTheme());				// No longer changing theme based on system preferences
 				prefersDarkScheme.addEventListener('change', function(e) {
-					if (!window.localStorage.getItem('theme')) {
-						loadTheme(e.matches ? 'dark' : 'light');
-					}
+					// Do nothing - we're ignoring system preferences
 				});
 			}
 		} else {

@@ -5,10 +5,28 @@
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 -->
 <html>
-	<head>
-		<title>UI Elements | Simulations.Science</title>
+	<head>		<title>UI Elements | Simulations.Science</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<script>
+			(function() {
+				// Force dark mode by default, only change if explicitly set to light
+				var theme = 'dark'; // Default is dark
+				try {
+					var storedTheme = localStorage.getItem('theme');
+					// Only override if explicitly set to light
+					if (storedTheme === 'light') {
+						theme = 'light'; 
+					}
+				} catch (e) { /* Ignore */ }
+
+				if (theme === 'dark') {
+					document.documentElement.classList.add('dark-mode');
+				} else {
+					document.documentElement.classList.remove('dark-mode');
+				}
+			})();
+		</script>
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
 	</head>

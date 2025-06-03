@@ -98,14 +98,15 @@
 		</script>
 		
 		<!-- Reference to structured data file -->
-		<link rel="alternate" type="application/ld+json" href="/structured-data.json">
-		<script>
+		<link rel="alternate" type="application/ld+json" href="/structured-data.json">		<script>
 			(function() {
-				var theme = 'dark'; // Default theme is now dark
+				// Force dark mode by default, only change if explicitly set to light
+				var theme = 'dark'; // Default is dark
 				try {
 					var storedTheme = localStorage.getItem('theme');
-					if (storedTheme) {
-						theme = storedTheme; // Override with stored theme if it exists
+					// Only override if explicitly set to light
+					if (storedTheme === 'light') {
+						theme = 'light'; 
 					}
 				} catch (e) {
 					// Ignore errors (e.g., localStorage disabled)
@@ -192,7 +193,7 @@
 									<a href="radiation_simulation.html">
 										<h2>Radiation</h2>
 										<div class="content">
-											<p>Explore how thermal energy transfers through electromagnetic waves without a medium, demonstrating photon emission and absorption</p>
+											<p>Explore how thermal energy transfers through electromagnetic waves without a medium</p>
 										</div>
 									</a>
 								</article><article class="style4">

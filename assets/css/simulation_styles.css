@@ -597,12 +597,28 @@ body.sim-fullscreen-active .simulation-area-wrapper {
     box-sizing: border-box; /* Ensures padding/border are included in total width/height. */
 }
 
+/* When controls panel is open in fullscreen, adjust the simulation area wrapper */
+body.sim-fullscreen-active.sim-panel-active .simulation-area-wrapper {
+    justify-content: flex-start; /* Align content to the left */
+}
+
 /* Ensure control panel adapts correctly in fullscreen. */
 body.sim-fullscreen-active .sim-controls-panel {
     /* Panel remains 'position:fixed'. These rules ensure it's correctly sized and positioned. */
     top: 0 !important; 
     height: 100vh !important;
     z-index: 4000; /* Ensures panel is above fullscreen canvas content but below action buttons. */
+}
+
+/* Apply transition to all states of simulation-main-content for smoother animation */
+.simulation-main-content {
+    transition: margin-right 0.3s ease-out, width 0.3s ease-out; /* Smooth transition */
+}
+
+/* When panel is open in fullscreen mode, adjust the main content to avoid overlap */
+body.sim-fullscreen-active.sim-panel-active .simulation-main-content {
+    margin-right: var(--sim-panel-width); /* Add margin to avoid overlap with panel */
+    width: calc(100% - var(--sim-panel-width)); /* Adjust width to account for panel */
 }
 
 /* Main content area layout in fullscreen. */
@@ -662,6 +678,18 @@ body.sim-fullscreen-active .sim-canvas-wrapper {
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
+}
+
+/* Adjust canvas wrapper dimensions when control panel is open in fullscreen mode */
+body.sim-fullscreen-active.sim-panel-active .sim-canvas-wrapper {
+    /* Account for panel width in calculations */
+    width: min(
+        calc(100vw - 100px - var(--sim-panel-width)), 
+        calc((100vh - 140px) * var(--aspect-ratio, 2))
+    );
+    
+    /* Ensure it stays within reasonable bounds with panel open */
+    max-width: calc(100vw - 50px - var(--sim-panel-width));
 }
 
 /* When charts are visible, reduce simulation height dynamically */

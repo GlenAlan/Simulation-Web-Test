@@ -36,22 +36,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeSettingsPanel();
             });
         }
-    }
-
-    function openSettingsPanel() {
+    }    function openSettingsPanel() {
         if (controlsPanel && panelToggleBtn) {
             controlsPanel.classList.add('panel-open');
             body.classList.add('sim-panel-active'); // CSS hides actionButtonsOverlay
             panelToggleBtn.setAttribute('aria-expanded', 'true');
-            // updateButtonIcons(); // External button icon doesn't change
+            
+            // Adjust main content area in fullscreen mode to make room for panel
+            if (body.classList.contains('sim-fullscreen-active')) {
+                const simulationMainContent = document.querySelector('.simulation-main-content');
+                if (simulationMainContent) {
+                    simulationMainContent.style.width = `calc(100% - ${getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width')})`;
+                    simulationMainContent.style.marginRight = getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width');
+                    // Trigger resize event to allow canvas to adapt to new dimensions
+                    window.dispatchEvent(new Event('resize'));
+                }
+            }
         }
-    }
-
-    function closeSettingsPanel() {
+    }    function closeSettingsPanel() {
         if (controlsPanel && panelToggleBtn) {
             controlsPanel.classList.remove('panel-open');
             body.classList.remove('sim-panel-active'); // CSS shows actionButtonsOverlay
             panelToggleBtn.setAttribute('aria-expanded', 'false');
+            
+            const simulationMainContent = document.querySelector('.simulation-main-content');
+            if (simulationMainContent) {
+                if (body.classList.contains('sim-fullscreen-active')) {
+                    // Restore main content area full width in fullscreen mode
+                    simulationMainContent.style.width = '100%';
+                    simulationMainContent.style.marginRight = '0';
+                } else {
+                    // Reset any inline styles when not in fullscreen mode
+                    // This is crucial to fix the offset issue when exiting fullscreen with panel open
+                    simulationMainContent.style.width = '';
+                    simulationMainContent.style.marginRight = '';
+                }
+                // Trigger resize event to allow canvas to adapt to new dimensions
+                window.dispatchEvent(new Event('resize'));
+            }
+            
             updateButtonIcons(); // Update fullscreen icon if its state could have changed indirectly
             updatePositions(); // Ensure positions are updated after panel closes
         }
@@ -65,9 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             panelToggleBtn.innerHTML = openPanelIcon; // Always set the cog icon for the external button
         }
         // The internal panelCloseBtnInside's icon is set upon its creation and doesn't need updating here.
-    }
-
-    function updatePositions() {
+    }    function updatePositions() {
         // Panel positioning logic (remains mostly the same for the panel itself)
         if (controlsPanel) { 
             let panelTopOffset = '0px';
@@ -78,13 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             controlsPanel.style.top = panelTopOffset;
             controlsPanel.style.height = panelHeight;
-        }
-
-        // Action Buttons Overlay positioning logic
+        }        // Action Buttons Overlay positioning logic
         // Overlay is hidden by CSS if panel is open (body.sim-panel-active)
         if (actionButtonsOverlay && !body.classList.contains('sim-panel-active')) {
             const simulationAreaWrapper = document.querySelector('.simulation-area-wrapper');
             const displayContainer = document.querySelector('.simulation-display-container');
+            const simulationMainContent = document.querySelector('.simulation-main-content');
             
             if (body.classList.contains('sim-fullscreen-active')) {
                 const buttonOffset = getComputedStyle(document.documentElement).getPropertyValue('--sim-button-offset').trim();
@@ -94,7 +114,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 actionButtonsOverlay.style.left = 'auto';
                 actionButtonsOverlay.style.transform = 'none';
                 document.documentElement.style.setProperty('--sim-action-buttons-overlay-height', `${actionButtonsOverlay.offsetHeight}px`);
-            } else { // Non-fullscreen mode, panel closed
+                
+                // Adjust canvas display container when in fullscreen based on panel state
+                if (simulationMainContent && controlsPanel && controlsPanel.classList.contains('panel-open')) {
+                    // Panel is open in fullscreen mode, adjust main content area
+                    simulationMainContent.style.width = `calc(100% - ${getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width')})`;
+                    simulationMainContent.style.marginRight = getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width');
+                } else if (simulationMainContent) {
+                    // Ensure full width when panel is closed in fullscreen
+                    simulationMainContent.style.width = '100%';
+                    simulationMainContent.style.marginRight = '0';
+                }            } else { // Non-fullscreen mode
+                // Reset any inline styles on main content area when not in fullscreen mode
+                if (simulationMainContent) {
+                    simulationMainContent.style.width = '';
+                    simulationMainContent.style.marginRight = '';
+                }
+                
                 actionButtonsOverlay.style.position = 'absolute';
                 const currentButtonOffsetString = getComputedStyle(document.documentElement).getPropertyValue('--sim-button-offset').trim(); // e.g., "5px"
                 const buttonOffsetNumeric = parseFloat(currentButtonOffsetString) || 0; // e.g., 5
@@ -135,9 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 openSettingsPanel();
             }
         });
-    }
-
-    if (fullscreenToggleBtn && simCanvas) {
+    }    if (fullscreenToggleBtn && simCanvas) {
         fullscreenToggleBtn.addEventListener('click', () => {
             const isEnteringFullscreen = !body.classList.contains('sim-fullscreen-active');
             body.classList.toggle('sim-fullscreen-active');
@@ -147,27 +181,62 @@ document.addEventListener('DOMContentLoaded', () => {
             if (simInfoBar) {
                 simInfoBar.classList.toggle('fullscreen-style', isEnteringFullscreen);
             }
+            
+            const simulationMainContent = document.querySelector('.simulation-main-content');
+            
+            // Update display container to respond to panel state if fullscreen is entered
+            if (isEnteringFullscreen && controlsPanel && controlsPanel.classList.contains('panel-open')) {
+                // When entering fullscreen with panel open, ensure canvas adapts to avoid overlap
+                if (simulationMainContent) {
+                    simulationMainContent.style.width = `calc(100% - ${getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width')})`;
+                    simulationMainContent.style.marginRight = getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width');
+                }
+            } else if (!isEnteringFullscreen) {
+                // When exiting fullscreen, reset inline styles regardless of panel state
+                if (simulationMainContent) {
+                    simulationMainContent.style.width = '';
+                    simulationMainContent.style.marginRight = '';
+                }
+            }
+            
             updateButtonIcons();
             updatePositions(); 
             window.dispatchEvent(new Event('resize')); // Ensure canvas resizes
         });
     }
-    
-    // Initial setup
+      // Initial setup
     createInternalCloseButton();
     updateButtonIcons();
-    updatePositions();
-
-    window.addEventListener('resize', () => {
+    updatePositions();    window.addEventListener('resize', () => {
         updatePositions();
-    });
-
-    document.addEventListener('keydown', (e) => {
+        
+        const simulationMainContent = document.querySelector('.simulation-main-content');
+        
+        // Handle resizing in fullscreen mode with panel open
+        if (body.classList.contains('sim-fullscreen-active') && 
+            controlsPanel && controlsPanel.classList.contains('panel-open')) {
+            if (simulationMainContent) {
+                simulationMainContent.style.width = `calc(100% - ${getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width')})`;
+                simulationMainContent.style.marginRight = getComputedStyle(document.documentElement).getPropertyValue('--sim-panel-width');
+            }
+        } else if (!body.classList.contains('sim-fullscreen-active') && simulationMainContent) {
+            // When not in fullscreen mode, ensure margin and width are reset
+            simulationMainContent.style.width = '';
+            simulationMainContent.style.marginRight = '';
+        }
+    });document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (body.classList.contains('sim-fullscreen-active')) {
                 // Simulate a click on the fullscreen button to exit fullscreen
                 if (fullscreenToggleBtn) {
                     fullscreenToggleBtn.click();
+                }
+                
+                // Additionally ensure that inline styles are reset
+                const simulationMainContent = document.querySelector('.simulation-main-content');
+                if (simulationMainContent) {
+                    simulationMainContent.style.width = '';
+                    simulationMainContent.style.marginRight = '';
                 }
             } else if (controlsPanel && controlsPanel.classList.contains('panel-open')) {
                 // If panel is open and not in fullscreen, close the panel

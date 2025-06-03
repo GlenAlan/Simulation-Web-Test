@@ -21,7 +21,7 @@ const resetButton = document.getElementById('resetSimulationBtn');
 
 // --- Simulation Constants & Parameters ---
 let timeScale = timeSlider ? parseFloat(timeSlider.value) : 1.0;
-let temperature = temperatureSlider ? parseFloat(temperatureSlider.value) : 1000; // Kelvin - updated default
+let temperature = temperatureSlider ? parseFloat(temperatureSlider.value) : 2500; // Kelvin - updated default
 let intensity = intensitySlider ? parseFloat(intensitySlider.value) : 50; // Percentage (0-100)
 let objectDistancePercent = distanceSlider ? parseFloat(distanceSlider.value) : 50; // Percentage of canvas width (25-90%)
 let objectType = objectTypeSelector ? objectTypeSelector.value : 'metal';
@@ -32,7 +32,7 @@ let canvasHeight = 400;
 
 // Performance caps
 const MAX_PHOTONS = 2500; // Cap total photons for performance
-const PHOTON_DENSITY_REDUCTION = 0.1; // Reduce overall photon density
+const PHOTON_DENSITY_REDUCTION = 0.001; // Reduce overall photon density
 
 // Physics constants
 const STEFAN_BOLTZMANN = 5.67e-8; // Stefan-Boltzmann constant (W⋅m−2⋅K−4)
@@ -43,13 +43,19 @@ const BOLTZMANN_CONSTANT = 1.381e-23; // Boltzmann constant (J/K)
 const REFERENCE_UPDATES_PER_SECOND = 60.0;
 const BASE_DT = 1.0 / REFERENCE_UPDATES_PER_SECOND;
 
-// Radiation source properties
-const SOURCE_RADIUS = 30;
-const SOURCE_X = 100; // Fixed position on left side
+// Base scaling constants (these will be scaled with canvas size)
+const BASE_SOURCE_RADIUS = 30;
+const BASE_SOURCE_X_RATIO = 0.125; // SOURCE_X as ratio of canvas width (100/800 = 0.125)
+const BASE_OBJECT_WIDTH = 40;
+const BASE_OBJECT_HEIGHT = 60;
+const MIN_SOURCE_RADIUS = 10; // Minimum source radius
+const MIN_OBJECT_SIZE = 15; // Minimum object size
 
-// Object properties
-const OBJECT_WIDTH = 40;
-const OBJECT_HEIGHT = 60;
+// Dynamic scaled properties (updated by calculateRadiationGeometry)
+let sourceRadius = BASE_SOURCE_RADIUS;
+let sourceX = BASE_SOURCE_X_RATIO * canvasWidth;
+let objectWidth = BASE_OBJECT_WIDTH;
+let objectHeight = BASE_OBJECT_HEIGHT;
 
 // Material properties with realistic absorption coefficients
 const MATERIAL_PROPERTIES = {
@@ -76,6 +82,40 @@ let currentFPS = 0;
 let frameCount = 0;
 let fpsTimer = 0;
 let lastFPSUpdate = 0;
+
+// Helper function to calculate radiation geometry based on canvas size
+function calculateRadiationGeometry(currentCanvasWidth, currentCanvasHeight) {
+    // Calculate scaled source radius based on canvas dimensions
+    // Use the smaller dimension to ensure source fits well
+    const baseCanvasSize = Math.min(currentCanvasWidth, currentCanvasHeight);
+    const scaleFactor = baseCanvasSize / 400; // 400 is the reference height
+    
+    const calculatedSourceRadius = Math.max(MIN_SOURCE_RADIUS, BASE_SOURCE_RADIUS * scaleFactor);
+    
+    // Calculate source X position as a ratio of canvas width
+    const calculatedSourceX = BASE_SOURCE_X_RATIO * currentCanvasWidth;
+    
+    // Scale object dimensions proportionally
+    const calculatedObjectWidth = Math.max(MIN_OBJECT_SIZE, BASE_OBJECT_WIDTH * scaleFactor);
+    const calculatedObjectHeight = Math.max(MIN_OBJECT_SIZE * 1.5, BASE_OBJECT_HEIGHT * scaleFactor);
+    
+    return {
+        sourceRadius: calculatedSourceRadius,
+        sourceX: calculatedSourceX,
+        objectWidth: calculatedObjectWidth,
+        objectHeight: calculatedObjectHeight,
+        scaleFactor: scaleFactor
+    };
+}
+
+// Function to update global radiation geometry variables
+function updateRadiationGeometry() {
+    const geom = calculateRadiationGeometry(canvasWidth, canvasHeight);
+    sourceRadius = geom.sourceRadius;
+    sourceX = geom.sourceX;
+    objectWidth = geom.objectWidth;
+    objectHeight = geom.objectHeight;
+}
 
 // Helper function to convert temperature to wavelength using Wien's law
 function temperatureToWavelength(temp) {
@@ -144,14 +184,13 @@ function wavelengthToRGB(wavelength) {
             red = 1.0;
             green = 0.0;
             blue = 0.0;
-        }
-    } else {
-        // Infrared - continuous decay from red
-        // Use exponential decay for smooth transition
+        }    } else {
+        // Infrared - continuous decay from red with enhanced visibility
+        // Use slower exponential decay for better visibility
         const irWavelength = wavelengthNm - 780;
-        const decayFactor = Math.exp(-irWavelength / 2000); // Smooth exponential decay
-        red = 1.0 * decayFactor + 0.4 * (1 - decayFactor);  // 1.0 → 0.4 smoothly
-        green = 0.0;
+        const decayFactor = Math.exp(-irWavelength / 3500); // Slower decay for more visibility
+        red = 1.0 * decayFactor + 0.6 * (1 - decayFactor);  // 1.0 → 0.6 (brighter minimum)
+        green = 0.1 * decayFactor; // Add slight green component for warmer infrared
         blue = 0.0;
     }
     
@@ -214,7 +253,7 @@ class Photon {
         this.energy = energy;
         this.wavelength = wavelength;
         this.age = 0;
-        this.maxAge = 5.0; // Seconds before photon disappears
+        this.maxAge = 10.0; // Seconds before photon disappears
         this.absorbed = false;
     }
     
@@ -238,11 +277,11 @@ class Photon {
         return true; // Keep photon
     }    checkAbsorption() {
         const objectX = getObjectDistancePixels();
-        const objectY = (canvasHeight - OBJECT_HEIGHT) / 2;
+        const objectY = (canvasHeight - objectHeight) / 2;
         
         // Check collision with absorption object
-        if (this.x >= objectX && this.x <= objectX + OBJECT_WIDTH &&
-            this.y >= objectY && this.y <= objectY + OBJECT_HEIGHT) {
+        if (this.x >= objectX && this.x <= objectX + objectWidth &&
+            this.y >= objectY && this.y <= objectY + objectHeight) {
             
             const material = MATERIAL_PROPERTIES[objectType];
             if (Math.random() < material.absorption) {
@@ -318,16 +357,61 @@ function initializeSimulationState() {
 }
 
 function adaptSimulationToResize(oldWidth, oldHeight, newWidth, newHeight) {
+    if (oldWidth <= 0 || oldHeight <= 0 || newWidth <= 0 || newHeight <= 0) return;
+    
+    // Calculate old and new geometries
+    const oldGeom = calculateRadiationGeometry(oldWidth, oldHeight);
+    const newGeom = calculateRadiationGeometry(newWidth, newHeight);
+    
     // Scale photon positions proportionally
     const scaleX = newWidth / oldWidth;
     const scaleY = newHeight / oldHeight;
     
+    // Scale photon speeds based on geometry scale factor
+    const speedScaleFactor = newGeom.scaleFactor / oldGeom.scaleFactor;
+    
     photons.forEach(photon => {
+        // Scale positions
         photon.x *= scaleX;
         photon.y *= scaleY;
+        
+        // Scale velocities to maintain proportional movement
+        photon.vx *= speedScaleFactor;
+        photon.vy *= speedScaleFactor;
     });
     
-    console.log(`Radiation simulation adapted to resize: ${newWidth}x${newHeight}.`);
+    // Update global geometry variables
+    updateRadiationGeometry();
+      console.log(`Radiation simulation adapted to resize: ${newWidth}x${newHeight}. Scale factor: ${newGeom.scaleFactor.toFixed(2)}`);
+}
+
+// Comprehensive resize handler for radiation simulation
+function handleRadiationResize() {
+    if (!canvas) return;
+    
+    const aspectRatioBox = canvas.parentElement;
+    let newWidth, newHeight;
+    
+    if (aspectRatioBox && aspectRatioBox.classList.contains('sim-aspect-ratio-box')) {
+        newWidth = aspectRatioBox.clientWidth;
+        newHeight = aspectRatioBox.clientHeight;
+    } else {
+        newWidth = canvas.clientWidth || 800;
+        newHeight = canvas.clientHeight || 400;
+    }
+    
+    // Only resize if dimensions actually changed
+    if (newWidth !== canvasWidth || newHeight !== canvasHeight) {
+        const oldWidth = canvasWidth;
+        const oldHeight = canvasHeight;
+        
+        canvasWidth = newWidth;
+        canvasHeight = newHeight;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        adaptSimulationToResize(oldWidth, oldHeight, canvasWidth, canvasHeight);
+    }
 }
 
 function emitPhotons() {
@@ -353,14 +437,13 @@ function emitPhotons() {
     
     // Calculate scaling factor for energy correction
     photonScalingFactor = theoreticalPhotonsEmitted / Math.max(totalPhotonsEmitted || 1, 1);
-    
-    for (let i = 0; i < numPhotonsToEmit; i++) {
+      for (let i = 0; i < numPhotonsToEmit; i++) {
         // Random point on source surface (uniform distribution in circle)
-        const sourceRadius = SOURCE_RADIUS * Math.sqrt(Math.random());
+        const sourceRadiusRandom = sourceRadius * Math.sqrt(Math.random());
         const sourceAngle = Math.random() * Math.PI * 2;
         
-        const startX = SOURCE_X + Math.cos(sourceAngle) * sourceRadius;
-        const startY = canvasHeight / 2 + Math.sin(sourceAngle) * sourceRadius;
+        const startX = sourceX + Math.cos(sourceAngle) * sourceRadiusRandom;
+        const startY = canvasHeight / 2 + Math.sin(sourceAngle) * sourceRadiusRandom;
         
         // Random emission direction (isotropic radiation - all directions equally likely)
         const emissionAngle = Math.random() * Math.PI * 2;
@@ -444,20 +527,20 @@ function drawRadiationSource() {
     const b = Math.round(rgb.b * effectiveBrightness);
     
     // Draw main source with size influenced by intensity
-    const sourceRadius = SOURCE_RADIUS * (0.7 + 0.3 * intensityFactor);
+    const sourceRadiusRendered = sourceRadius * (0.7 + 0.3 * intensityFactor);
     ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
     ctx.beginPath();
-    ctx.arc(SOURCE_X, centerY, sourceRadius, 0, Math.PI * 2);
+    ctx.arc(sourceX, centerY, sourceRadiusRendered, 0, Math.PI * 2);
     ctx.fill();
     
     // Enhanced glow effect based on temperature and intensity
     const numGlowLayers = Math.ceil(3 + brightness * 2);
     for (let i = 0; i < numGlowLayers; i++) {
-        const glowRadius = sourceRadius + (i + 1) * 8;
+        const glowRadius = sourceRadiusRendered + (i + 1) * 8;
         const glowAlpha = (0.15 * brightness) / (i + 1);
         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${glowAlpha})`;
         ctx.beginPath();
-        ctx.arc(SOURCE_X, centerY, glowRadius, 0, Math.PI * 2);
+        ctx.arc(sourceX, centerY, glowRadius, 0, Math.PI * 2);
         ctx.fill();
     }
     
@@ -465,12 +548,12 @@ function drawRadiationSource() {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '14px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(`${temperature}K`, SOURCE_X, centerY + sourceRadius + 20);
+    ctx.fillText(`${temperature}K`, sourceX, centerY + sourceRadiusRendered + 20);
 }
 
 function drawAbsorptionObject() {
     const objectX = getObjectDistancePixels();
-    const objectY = (canvasHeight - OBJECT_HEIGHT) / 2;
+    const objectY = (canvasHeight - objectHeight) / 2;
     const material = MATERIAL_PROPERTIES[objectType];
     
     // Calculate absorbed energy rate for visual feedback
@@ -478,7 +561,7 @@ function drawAbsorptionObject() {
     
     // Draw object with energy absorption visual effect
     ctx.fillStyle = material.color;
-    ctx.fillRect(objectX, objectY, OBJECT_WIDTH, OBJECT_HEIGHT);
+    ctx.fillRect(objectX, objectY, objectWidth, objectHeight);
     
     // Add heat glow effect based on absorbed energy
     if (absorbedEnergy > 50) {
@@ -487,29 +570,29 @@ function drawAbsorptionObject() {
         
         for (let i = 1; i <= 3; i++) {
             ctx.fillStyle = `rgba(255, 100, 0, ${glowAlpha / i})`;
-            ctx.fillRect(objectX - i * 2, objectY - i * 2, OBJECT_WIDTH + i * 4, OBJECT_HEIGHT + i * 4);
+            ctx.fillRect(objectX - i * 2, objectY - i * 2, objectWidth + i * 4, objectHeight + i * 4);
         }
         
         // Redraw the main object
         ctx.fillStyle = material.color;
-        ctx.fillRect(objectX, objectY, OBJECT_WIDTH, OBJECT_HEIGHT);
+        ctx.fillRect(objectX, objectY, objectWidth, objectHeight);
     }
     
     // Draw object outline
     ctx.strokeStyle = '#FFFFFF';
     ctx.lineWidth = 2;
-    ctx.strokeRect(objectX, objectY, OBJECT_WIDTH, OBJECT_HEIGHT);
+    ctx.strokeRect(objectX, objectY, objectWidth, objectHeight);
     
     // Material label
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(material.name, objectX + OBJECT_WIDTH / 2, objectY + OBJECT_HEIGHT + 15);
+    ctx.fillText(material.name, objectX + objectWidth / 2, objectY + objectHeight + 15);
     
     // Absorption percentage indicator
     ctx.fillStyle = '#FFFF00';
     ctx.font = '10px Arial';
-    ctx.fillText(`${(material.absorption * 100).toFixed(0)}% abs`, objectX + OBJECT_WIDTH / 2, objectY + OBJECT_HEIGHT + 30);
+    ctx.fillText(`${(material.absorption * 100).toFixed(0)}% abs`, objectX + objectWidth / 2, objectY + objectHeight + 30);
 }
 
 function drawDistanceLine() {
@@ -521,17 +604,19 @@ function drawDistanceLine() {
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.moveTo(SOURCE_X + SOURCE_RADIUS, centerY);
+    ctx.moveTo(sourceX + sourceRadius, centerY);
     ctx.lineTo(objectX, centerY);
     ctx.stroke();
-    ctx.setLineDash([]);      // Convert distance to realistic units for display
+    ctx.setLineDash([]);
+    
+    // Convert distance to realistic units for display
     const distanceM = getActualDistanceMeters();
     
     // Distance label with realistic units
     ctx.fillStyle = '#AAAAAA';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(`${distanceM.toFixed(2)} m`, (SOURCE_X + SOURCE_RADIUS + objectX) / 2, centerY - 10);
+    ctx.fillText(`${distanceM.toFixed(2)} m`, (sourceX + sourceRadius + objectX) / 2, centerY - 10);
 }
 
 function computeAndDisplayData() {
@@ -571,10 +656,9 @@ function computeAndDisplayData() {
         distanceInfo.className = 'sim-info-item';
         infoBar.insertBefore(distanceInfo, infoBar.lastElementChild);
     }
-    
-    const distanceInfoElement = document.getElementById('distanceInfo');
+      const distanceInfoElement = document.getElementById('distanceInfo');
     if (distanceInfoElement) {
-        distanceInfoElement.innerHTML = `Distance: ${distanceM.toFixed(2)} m | Intensity: ${effectiveIntensity.toFixed(1)}% | Scale: ${photonScalingFactor.toFixed(1)}x`;
+        distanceInfoElement.innerHTML = `Distance: ${distanceM.toFixed(2)} m | Intensity: ${effectiveIntensity.toFixed(1)}%`;
     }
 }
 
@@ -582,8 +666,8 @@ function computeAndDisplayData() {
 function getObjectDistancePixels() {
     // Convert percentage (25-90%) to actual pixel position
     // Ensure object stays within canvas bounds with some margin
-    const minDistance = SOURCE_X + SOURCE_RADIUS + 50; // Minimum distance from source
-    const maxDistance = canvasWidth - OBJECT_WIDTH - 20; // Maximum distance (leave margin for object)
+    const minDistance = sourceX + sourceRadius + 50; // Minimum distance from source
+    const maxDistance = canvasWidth - objectWidth - 20; // Maximum distance (leave margin for object)
     const availableWidth = maxDistance - minDistance;
     
     // Map percentage (25-90%) to available width
@@ -596,7 +680,7 @@ function getObjectDistancePixels() {
 // Helper function to get the actual distance in meters from source to object
 function getActualDistanceMeters() {
     const objectX = getObjectDistancePixels();
-    const distancePixels = objectX - SOURCE_X - SOURCE_RADIUS;
+    const distancePixels = objectX - sourceX - sourceRadius;
     return pixelsToMeters(distancePixels);
 }
 
@@ -648,18 +732,8 @@ function animate(timestamp) {
     if (stepsTaken >= maxStepsPerFrame) {
         physicsStepAccumulator = 0.0; // Reset to prevent spiral
     }
-    
-    // --- Canvas Resize Handling ---
-    if (canvas.clientWidth !== canvasWidth || canvas.clientHeight !== canvasHeight) {
-        const oldWidth = canvasWidth;
-        const oldHeight = canvasHeight;
-        canvasWidth = canvas.clientWidth;
-        canvasHeight = canvas.clientHeight;
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-        
-        adaptSimulationToResize(oldWidth, oldHeight, canvasWidth, canvasHeight);
-    }
+      // --- Canvas Resize Handling ---
+    handleRadiationResize();
     
     // --- Rendering & Data Display ---
     renderSimulation();
@@ -687,6 +761,9 @@ function startSimulation() {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
+    // Initialize scaled geometry based on canvas size
+    updateRadiationGeometry();
+    
     initializeSimulationState();
     requestAnimationFrame(animate);
     console.log("Thermal radiation simulation started.");

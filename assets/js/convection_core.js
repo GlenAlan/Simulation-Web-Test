@@ -2,9 +2,9 @@
 let N    = 64; // Made N mutable
 let size = N + 2;
 const iter = 4;
-const diff   = 0.0001,
-      visc   = 0.0001,
-      buoyancyCoeff = 1.0,
+const diff   = 0.0001;
+let visc   = 0.0001; // Made viscosity variable for dropdown control
+const buoyancyCoeff = 1.0,
       ambientTemp   = 0.5;
 
 // TIME MANAGEMENT
@@ -58,6 +58,7 @@ const heatAmpSlider = document.getElementById('heatAmp');
 const ampVal      = document.getElementById('heatAmpVal');
 const coolSlider  = document.getElementById('coolRate');
 const coolVal     = document.getElementById('coolRateVal');
+const viscositySelector = document.getElementById('viscositySelector');
 const fpsDisplay  = document.getElementById('fpsDisplay'); 
 const avgDensityDisplay = document.getElementById('avgDensityVal');
 const resetSimButton = document.getElementById('resetSimulationBtn');
@@ -632,6 +633,7 @@ if (timeSlider && timeVal) { timeScale = +timeSlider.value; timeVal.textContent 
 if (radiusSlider && radiusVal) { heatRadius = +radiusSlider.value; radiusVal.textContent = heatRadius; }
 if (heatAmpSlider && ampVal) { heatAmp = +heatAmpSlider.value; ampVal.textContent = heatAmp.toFixed(2); }
 if (coolSlider && coolVal) { coolRate = +coolSlider.value; coolVal.textContent = coolRate.toFixed(2); }
+if (viscositySelector) { visc = +viscositySelector.value; }
 
 function startSimulationWhenReady() {
     if (!canvas) {
@@ -742,4 +744,12 @@ function resetSimulation() {
 
 if (resetSimButton) {
     resetSimButton.addEventListener('click', resetSimulation);
+}
+
+// Add event listener for viscosity dropdown
+if (viscositySelector) {
+    viscositySelector.addEventListener('change', function() {
+        visc = +this.value;
+        console.log("Viscosity changed to:", visc);
+    });
 }

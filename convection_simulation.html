@@ -170,10 +170,20 @@
                                         </label>
                                         <label>Heat Intensity: <span id="heatAmpVal">0.50</span>
                                             <input type="range" id="heatAmp" min="0.01" max="1" step="0.01" value="0.50">
-                                        </label>
-                                        <label>Surface Cooling: <span id="coolRateVal">0.50</span>
+                                        </label>                                        <label>Surface Cooling: <span id="coolRateVal">0.50</span>
                                             <input type="range" id="coolRate" min="0" max="1" step="0.01" value="0.50">
                                         </label>
+                                        <div class="sim-control-group">
+                                            <p class="sim-control-group-label" id="viscosityLabel">Viscosity:</p>
+                                            <div class="sim-select-container">
+                                                <select id="viscositySelector" aria-labelledby="viscosityLabel">
+                                                    <option value="0.000001">Acetone (Very Low)</option>
+                                                    <option value="0.0001" selected>Water (Low)</option>
+                                                    <option value="0.001">Oil (Medium)</option>
+                                                    <option value="0.1">Honey (High)</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                         <div class="sim-control-group">
                                             <p class="sim-control-group-label" id="convectionGridSizeLabel">Simulation Size:</p>
                                             <div class="sim-select-container">

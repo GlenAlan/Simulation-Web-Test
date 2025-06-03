@@ -169,15 +169,16 @@
                                     </div>
                                     <div class="sim-controls-content">                                        <label>Speed: <span id="timeScaleVal">1.0</span>x
                                             <input type="range" id="timeScale" min="0.1" max="5.0" step="0.1" value="1.0">
-                                        </label>
-                                        <label>Temperature: <span id="temperatureVal">2500</span>K
-                                            <input type="range" id="temperature" min="1000" max="5000" step="10" value="2500">
+                                        </label>                                        <label>Temperature: <span id="temperatureVal">3000</span>K
+                                            <input type="range" id="temperature" min="1000" max="5000" step="10" value="3000">
                                         </label>
                                         <label>Intensity: <span id="intensityVal">50</span>%
                                             <input type="range" id="intensity" min="10" max="100" step="5" value="50">
                                         </label>
                                         <label>Object Distance: <span id="distanceVal">0.40</span>m
                                             <input type="range" id="distance" min="25" max="90" step="5" value="50">
+                                        </label>                                        <label>Cooling Rate: <span id="coolingRateVal">0.5</span>W
+                                            <input type="range" id="coolingRate" min="0.0" max="1000.0" step="5.0" value="0.5">
                                         </label>
                                         <div class="sim-control-group">
                                             <p class="sim-control-group-label">Absorption Object:</p>
@@ -199,9 +200,8 @@
                                                 <canvas id="simulationCanvas" class="sim-canvas"></canvas>
                                             </div>
                                             <div id="fpsDisplay" class="sim-fps-display">FPS: 0</div>
-                                        </div>
-                                        <div class="sim-info-bar">
-                                            <span class="sim-info-item">Absorbed Energy: <span id="absorbedEnergyVal">0</span> J/s</span>
+                                        </div>                                        <div class="sim-info-bar">
+                                            <span class="sim-info-item">Absorbed Power: <span id="absorbedEnergyVal">0</span> mW</span>
                                             <span class="sim-info-item">Photons/sec: <span id="emissionRateVal">0</span></span>
                                             <button id="resetSimulationBtn" class="sim-reset-button" aria-label="Reset Simulation">
                                                 <span class="icon solid fa-sync-alt"></span>
@@ -216,19 +216,19 @@
                                     </div>
 
                                     <div class="description-area">
-                                        <h3>About this Simulation</h3>
-                                        <p>This simulation demonstrates thermal radiation - the transfer of heat through electromagnetic waves (photons). All objects emit thermal radiation based on their temperature, following the Stefan-Boltzmann law. The simulation shows a hot object emitting photons in all directions, with an absorbing object that can be positioned at various distances.</p>
-                                        <p>Observe how changing the temperature affects both the number of photons emitted and their energy (indicated by color). Notice how the distance between objects affects the amount of energy absorbed - radiation follows an inverse square law where intensity decreases with the square of the distance.</p>
+                                        <h3>About this Simulation</h3>                                        <p>This simulation demonstrates thermal radiation - the transfer of heat through electromagnetic waves (photons). All objects emit thermal radiation based on their temperature, following the Stefan-Boltzmann law. The simulation shows a hot object emitting photons in all directions, with an absorbing object that heats up as it absorbs radiation and cools down through passive cooling.</p>
+                                        <p>Observe how changing the temperature affects both the number of photons emitted and their energy (indicated by color). Notice how the distance between objects affects the amount of energy absorbed - radiation follows an inverse square law where intensity decreases with the square of the distance. Watch as the absorbing object's temperature rises when it absorbs photons and gradually cools down.</p>
                                         <p>Use the <span class="icon solid fa-cog"></span> icon to toggle the controls panel, and the <span class="icon solid fa-expand"></span> icon to enter or exit fullscreen mode. The reset button (<span class="icon solid fa-sync-alt"></span>) will restart the simulation with current settings.</p>
                                         <p><strong>Controls:</strong></p>
                                         <ul>
                                             <li><strong>Speed:</strong> Adjusts the simulation rate. Higher values make time pass faster.</li>
-                                            <li><strong>Temperature:</strong> Controls the temperature of the radiating object. Higher temperatures emit more photons with higher energy.</li>
+                                            <li><strong>Temperature:</strong> Controls the temperature of the radiating object (now defaults to 3000K). Higher temperatures emit more photons with higher energy.</li>
                                             <li><strong>Photon Intensity:</strong> Adjusts the visual density of photons displayed (affects performance but not physics).</li>
                                             <li><strong>Object Distance:</strong> Controls how far the absorbing object is from the radiation source.</li>
-                                            <li><strong>Absorption Object:</strong> Select different materials with varying absorption properties.</li>
+                                            <li><strong>Cooling Rate:</strong> Controls how quickly the absorbing object loses heat to the environment (0-1000 Watts).</li>
+                                            <li><strong>Absorption Object:</strong> Select different materials with varying absorption properties and thermal characteristics.</li>
                                         </ul>
-                                        <p>The simulation demonstrates key principles of thermal radiation including blackbody radiation, the Stefan-Boltzmann law (total power ∝ T⁴), and the inverse square law for radiation intensity.</p>
+                                        <p>The simulation demonstrates key principles of thermal radiation including blackbody radiation, the Stefan-Boltzmann law (total power ∝ T⁴), the inverse square law for radiation intensity, and thermal equilibrium dynamics.</p>
                                     </div>
                                 </div>
 							</div>

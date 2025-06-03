@@ -14,6 +14,8 @@ const intensitySlider = document.getElementById('intensity');
 const intensityVal = document.getElementById('intensityVal');
 const distanceSlider = document.getElementById('distance');
 const distanceVal = document.getElementById('distanceVal');
+const coolingRateSlider = document.getElementById('coolingRate');
+const coolingRateVal = document.getElementById('coolingRateVal');
 const objectTypeSelector = document.getElementById('objectTypeSelector');
 const absorbedEnergyDisplay = document.getElementById('absorbedEnergyVal');
 const emissionRateDisplay = document.getElementById('emissionRateVal');
@@ -21,10 +23,15 @@ const resetButton = document.getElementById('resetSimulationBtn');
 
 // --- Simulation Constants & Parameters ---
 let timeScale = timeSlider ? parseFloat(timeSlider.value) : 1.0;
-let temperature = temperatureSlider ? parseFloat(temperatureSlider.value) : 2500; // Kelvin - updated default
+let temperature = temperatureSlider ? parseFloat(temperatureSlider.value) : 3000; // Kelvin - updated default to 3000K
 let intensity = intensitySlider ? parseFloat(intensitySlider.value) : 50; // Percentage (0-100)
 let objectDistancePercent = distanceSlider ? parseFloat(distanceSlider.value) : 50; // Percentage of canvas width (25-90%)
 let objectType = objectTypeSelector ? objectTypeSelector.value : 'metal';
+
+// Object temperature and cooling parameters
+let objectTemperature = 293; // Start at room temperature (20°C)
+let passiveCoolingRate = coolingRateSlider ? parseFloat(coolingRateSlider.value) : 0.5; // Watts of cooling per second (adjustable)
+let ambientTemperature = 293; // Room temperature in Kelvin (20°C)
 
 // Canvas dimensions
 let canvasWidth = 800;
@@ -57,11 +64,32 @@ let sourceX = BASE_SOURCE_X_RATIO * canvasWidth;
 let objectWidth = BASE_OBJECT_WIDTH;
 let objectHeight = BASE_OBJECT_HEIGHT;
 
-// Material properties with realistic absorption coefficients
+// Material properties with realistic absorption coefficients and thermal properties
 const MATERIAL_PROPERTIES = {
-    metal: { absorption: 0.9, color: '#888888', name: 'Metal', emissivity: 0.95 },
-    glass: { absorption: 0.6, color: '#CCE5FF', name: 'Glass', emissivity: 0.85 },
-    plastic: { absorption: 0.3, color: '#FFB366', name: 'Plastic', emissivity: 0.90 }
+    metal: { 
+        absorption: 0.9, 
+        color: '#888888', 
+        name: 'Metal', 
+        emissivity: 0.95,
+        thermalMass: 500, // J/K (heat capacity)
+        thermalConductivity: 0.8 // Thermal conductivity factor
+    },
+    glass: { 
+        absorption: 0.6, 
+        color: '#CCE5FF', 
+        name: 'Glass', 
+        emissivity: 0.85,
+        thermalMass: 800, // J/K
+        thermalConductivity: 0.3
+    },
+    plastic: { 
+        absorption: 0.3, 
+        color: '#FFB366', 
+        name: 'Plastic', 
+        emissivity: 0.90,
+        thermalMass: 200, // J/K  
+        thermalConductivity: 0.1
+    }
 };
 
 // Distance scaling (convert pixels to realistic units for display)
@@ -294,6 +322,15 @@ class Photon {
                     energy: correctedEnergy,
                     timestamp: Date.now()
                 });
+                  // Heat up the object based on absorbed energy
+                // Convert absorbed energy to temperature increase using thermal mass
+                const tempIncrease = correctedEnergy / material.thermalMass;
+                
+                // Apply temperature cap to prevent thermodynamic violation
+                // Object cannot exceed source temperature (thermal equilibrium principle)
+                const newTemperature = objectTemperature + tempIncrease;
+                objectTemperature = Math.min(newTemperature, temperature);
+                
                 this.absorbed = true;
             }
         }
@@ -353,6 +390,7 @@ function initializeSimulationState() {
     totalPhotonsEmitted = 0;
     theoreticalPhotonsEmitted = 0;
     photonScalingFactor = 1.0;
+    objectTemperature = ambientTemperature; // Reset object to ambient temperature
     console.log("Thermal radiation simulation initialized.");
 }
 
@@ -477,7 +515,22 @@ function emitPhotons() {
         const scaledEnergy = (energy / 1e-19) * (temperature / 500);
         
         photons.push(new Photon(startX, startY, vx, vy, scaledEnergy, clampedWavelength));
-        totalPhotonsEmitted++;
+        totalPhotonsEmitted++;    }
+}
+
+// Update object temperature with passive cooling
+function updateObjectTemperature(deltaTime) {
+    const material = MATERIAL_PROPERTIES[objectType];
+    
+    // Calculate cooling effect
+    if (objectTemperature > ambientTemperature) {
+        // Convective cooling: rate proportional to temperature difference
+        const tempDifference = objectTemperature - ambientTemperature;
+        const coolingPower = passiveCoolingRate * material.thermalConductivity * (tempDifference / 100); // Scale cooling
+        
+        // Apply cooling (limit to prevent overcooling)
+        const tempDecrease = (coolingPower * deltaTime) / material.thermalMass;
+        objectTemperature = Math.max(ambientTemperature, objectTemperature - tempDecrease);
     }
 }
 
@@ -487,6 +540,9 @@ function runSinglePhysicsStep(deltaTime) {
     
     // Update existing photons with delta time
     photons = photons.filter(photon => photon.update(deltaTime));
+    
+    // Apply passive cooling to the object
+    updateObjectTemperature(deltaTime);
 }
 
 function renderSimulation() {
@@ -559,22 +615,43 @@ function drawAbsorptionObject() {
     // Calculate absorbed energy rate for visual feedback
     const energyAbsorptionRate = absorbedEnergy / (totalPhotonsEmitted || 1) * 100;
     
-    // Draw object with energy absorption visual effect
-    ctx.fillStyle = material.color;
+    // Calculate temperature-based color modification
+    const tempAboveAmbient = objectTemperature - ambientTemperature;
+    const maxTempDifference = 200; // Maximum expected temperature rise for color scaling
+    const heatIntensity = Math.min(tempAboveAmbient / maxTempDifference, 1);
+    
+    // Blend material color with heat glow
+    let baseColor = material.color;
+    if (heatIntensity > 0.1) {
+        // Convert hex color to RGB for blending
+        const r = parseInt(baseColor.slice(1, 3), 16);
+        const g = parseInt(baseColor.slice(3, 5), 16);
+        const b = parseInt(baseColor.slice(5, 7), 16);
+        
+        // Blend with red/orange heat color
+        const heatR = Math.min(255, r + heatIntensity * 100);
+        const heatG = Math.min(255, g + heatIntensity * 50);
+        const heatB = Math.max(0, b - heatIntensity * 50);
+        
+        baseColor = `rgb(${Math.round(heatR)}, ${Math.round(heatG)}, ${Math.round(heatB)})`;
+    }
+    
+    // Draw object with temperature-based color
+    ctx.fillStyle = baseColor;
     ctx.fillRect(objectX, objectY, objectWidth, objectHeight);
     
-    // Add heat glow effect based on absorbed energy
-    if (absorbedEnergy > 50) {
-        const glowIntensity = Math.min(absorbedEnergy / 500, 1);
-        const glowAlpha = glowIntensity * 0.4;
+    // Add heat glow effect based on object temperature
+    if (tempAboveAmbient > 10) {
+        const glowIntensity = Math.min(heatIntensity, 1);
+        const glowAlpha = glowIntensity * 0.6;
         
-        for (let i = 1; i <= 3; i++) {
-            ctx.fillStyle = `rgba(255, 100, 0, ${glowAlpha / i})`;
+        for (let i = 1; i <= 4; i++) {
+            ctx.fillStyle = `rgba(255, ${100 - i*10}, 0, ${glowAlpha / i})`;
             ctx.fillRect(objectX - i * 2, objectY - i * 2, objectWidth + i * 4, objectHeight + i * 4);
         }
         
         // Redraw the main object
-        ctx.fillStyle = material.color;
+        ctx.fillStyle = baseColor;
         ctx.fillRect(objectX, objectY, objectWidth, objectHeight);
     }
     
@@ -589,10 +666,15 @@ function drawAbsorptionObject() {
     ctx.textAlign = 'center';
     ctx.fillText(material.name, objectX + objectWidth / 2, objectY + objectHeight + 15);
     
-    // Absorption percentage indicator
+    // Temperature display
     ctx.fillStyle = '#FFFF00';
     ctx.font = '10px Arial';
-    ctx.fillText(`${(material.absorption * 100).toFixed(0)}% abs`, objectX + objectWidth / 2, objectY + objectHeight + 30);
+    ctx.fillText(`${objectTemperature.toFixed(0)}K`, objectX + objectWidth / 2, objectY + objectHeight + 30);
+    
+    // Absorption percentage indicator
+    ctx.fillStyle = '#AAAAAA';
+    ctx.font = '10px Arial';
+    ctx.fillText(`${(material.absorption * 100).toFixed(0)}% abs`, objectX + objectWidth / 2, objectY + objectHeight + 45);
 }
 
 function drawDistanceLine() {
@@ -638,17 +720,38 @@ function computeAndDisplayData() {
     energyAbsorptionHistory = energyAbsorptionHistory.filter(entry => 
         currentTime - entry.timestamp < timeWindow
     );
-    
-    // Calculate power (energy per second) from recent absorptions (already corrected)
+      // Calculate power (energy per second) from recent absorptions (already corrected)
     const recentEnergySum = energyAbsorptionHistory.reduce((sum, entry) => sum + entry.energy, 0);
     const timeSpan = timeWindow / 1000; // Convert to seconds
     absorbedEnergyRate = recentEnergySum / timeSpan; // J/s (Watts)
     
-    // Update displays with corrected values
-    absorbedEnergyDisplay.textContent = absorbedEnergyRate.toFixed(1);
-    emissionRateDisplay.textContent = theoreticalEmissionRate.toFixed(0); // Show theoretical rate
+    // Dynamically choose appropriate units for absorbed power display
+    let powerValue, powerUnit;
+    if (absorbedEnergyRate >= 1000) {
+        // Use kilowatts for values >= 1000W
+        powerValue = absorbedEnergyRate / 1000;
+        powerUnit = 'kW';
+    } else if (absorbedEnergyRate >= 1) {
+        // Use watts for values >= 1W
+        powerValue = absorbedEnergyRate;
+        powerUnit = 'W';
+    } else {
+        // Use milliwatts for values < 1W
+        powerValue = absorbedEnergyRate * 1000;
+        powerUnit = 'mW';
+    }
     
-    // Add distance and intensity info to existing display elements
+    // Update displays with appropriate units
+    absorbedEnergyDisplay.textContent = powerValue.toFixed(1);
+    
+    // Update the unit label in the info bar
+    const absorbedPowerSpan = document.querySelector('.sim-info-item:first-child');
+    if (absorbedPowerSpan) {
+        absorbedPowerSpan.innerHTML = `Absorbed Power: <span id="absorbedEnergyVal">${powerValue.toFixed(1)}</span> ${powerUnit}`;
+    }
+    
+    emissionRateDisplay.textContent = theoreticalEmissionRate.toFixed(0); // Show theoretical rate
+      // Add distance and intensity info to existing display elements
     const infoBar = document.querySelector('.sim-info-bar');
     if (infoBar && !document.getElementById('distanceInfo')) {
         const distanceInfo = document.createElement('span');
@@ -656,9 +759,24 @@ function computeAndDisplayData() {
         distanceInfo.className = 'sim-info-item';
         infoBar.insertBefore(distanceInfo, infoBar.lastElementChild);
     }
-      const distanceInfoElement = document.getElementById('distanceInfo');
+    
+    // Add object temperature info
+    if (infoBar && !document.getElementById('objectTempInfo')) {
+        const objectTempInfo = document.createElement('span');
+        objectTempInfo.id = 'objectTempInfo';
+        objectTempInfo.className = 'sim-info-item';
+        infoBar.insertBefore(objectTempInfo, infoBar.lastElementChild);
+    }
+      
+    const distanceInfoElement = document.getElementById('distanceInfo');
     if (distanceInfoElement) {
         distanceInfoElement.innerHTML = `Distance: ${distanceM.toFixed(2)} m | Intensity: ${effectiveIntensity.toFixed(1)}%`;
+    }
+    
+    const objectTempInfoElement = document.getElementById('objectTempInfo');
+    if (objectTempInfoElement) {
+        const tempC = objectTemperature - 273.15; // Convert to Celsius
+        objectTempInfoElement.innerHTML = `Object: ${objectTemperature.toFixed(0)}K (${tempC.toFixed(1)}°C)`;
     }
 }
 
@@ -807,6 +925,15 @@ if (distanceSlider && distanceVal) {
     };
     const initialDistanceM = getActualDistanceMeters();
     distanceVal.textContent = `${initialDistanceM.toFixed(2)}`;
+}
+
+// Cooling rate slider
+if (coolingRateSlider && coolingRateVal) {
+    coolingRateSlider.oninput = () => {
+        passiveCoolingRate = parseFloat(coolingRateSlider.value);
+        coolingRateVal.textContent = passiveCoolingRate.toFixed(1);
+    };
+    coolingRateVal.textContent = passiveCoolingRate.toFixed(1);
 }
 
 // Object type selector

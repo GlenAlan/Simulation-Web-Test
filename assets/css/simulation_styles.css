@@ -606,8 +606,8 @@ body.sim-fullscreen-active.sim-panel-active .simulation-area-wrapper {
 body.sim-fullscreen-active .sim-controls-panel {
     /* Panel remains 'position:fixed'. These rules ensure it's correctly sized and positioned. */
     top: 0 !important; 
-    height: 100vh !important;
-    z-index: 4000; /* Ensures panel is above fullscreen canvas content but below action buttons. */
+    height: calc(100vh - 60px) !important;
+    z-index: 1004; /* Ensures panel is above fullscreen canvas content but below action buttons. */
 }
 
 /* Apply transition to all states of simulation-main-content for smoother animation */

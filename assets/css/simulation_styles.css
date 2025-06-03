@@ -358,6 +358,7 @@ html.dark-mode .sim-show-charts-label:hover .icon {
 .sim-info-item {
     font-size: 0.9em;
     color: var(--color-text);
+    margin-right: 1.5em; /* Increased spacing between info items */
 }
 
 .sim-info-item #energyVal {

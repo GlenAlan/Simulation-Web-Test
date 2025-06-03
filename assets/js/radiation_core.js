@@ -21,7 +21,7 @@ const resetButton = document.getElementById('resetSimulationBtn');
 
 // --- Simulation Constants & Parameters ---
 let timeScale = timeSlider ? parseFloat(timeSlider.value) : 1.0;
-let temperature = temperatureSlider ? parseFloat(temperatureSlider.value) : 500; // Kelvin
+let temperature = temperatureSlider ? parseFloat(temperatureSlider.value) : 1000; // Kelvin - updated default
 let intensity = intensitySlider ? parseFloat(intensitySlider.value) : 50; // Percentage (0-100)
 let objectDistancePercent = distanceSlider ? parseFloat(distanceSlider.value) : 50; // Percentage of canvas width (25-90%)
 let objectType = objectTypeSelector ? objectTypeSelector.value : 'metal';
@@ -29,6 +29,10 @@ let objectType = objectTypeSelector ? objectTypeSelector.value : 'metal';
 // Canvas dimensions
 let canvasWidth = 800;
 let canvasHeight = 400;
+
+// Performance caps
+const MAX_PHOTONS = 2500; // Cap total photons for performance
+const PHOTON_DENSITY_REDUCTION = 0.1; // Reduce overall photon density
 
 // Physics constants
 const STEFAN_BOLTZMANN = 5.67e-8; // Stefan-Boltzmann constant (W⋅m−2⋅K−4)
@@ -61,7 +65,11 @@ const MAX_DISTANCE_CM = 350; // Maximum distance in centimeters
 // --- Simulation State Variables ---
 let photons = [];
 let absorbedEnergy = 0;
+let absorbedEnergyRate = 0; // Power (energy per unit time)
+let energyAbsorptionHistory = []; // Track recent absorptions for smoothing
 let totalPhotonsEmitted = 0;
+let theoreticalPhotonsEmitted = 0; // Track what should have been emitted without cap
+let photonScalingFactor = 1.0; // Correction factor for capped photons
 let lastTimestamp = 0;
 let physicsStepAccumulator = 0.0;
 let currentFPS = 0;
@@ -81,71 +89,94 @@ function wavelengthToRGB(wavelength) {
     
     let red = 0, green = 0, blue = 0;
     
-    if (wavelengthNm >= 380 && wavelengthNm < 440) {
-        red = -(wavelengthNm - 440) / (440 - 380);
-        green = 0.0;
-        blue = 1.0;
-    } else if (wavelengthNm >= 440 && wavelengthNm < 490) {
-        red = 0.0;
-        green = (wavelengthNm - 440) / (490 - 440);
-        blue = 1.0;
-    } else if (wavelengthNm >= 490 && wavelengthNm < 510) {
-        red = 0.0;
-        green = 1.0;
-        blue = -(wavelengthNm - 510) / (510 - 490);
-    } else if (wavelengthNm >= 510 && wavelengthNm < 580) {
-        red = (wavelengthNm - 510) / (580 - 510);
-        green = 1.0;
-        blue = 0.0;
-    } else if (wavelengthNm >= 580 && wavelengthNm < 645) {
-        red = 1.0;
-        green = -(wavelengthNm - 645) / (645 - 580);
-        blue = 0.0;
-    } else if (wavelengthNm >= 645 && wavelengthNm < 781) {
-        red = 1.0;
-        green = 0.0;
-        blue = 0.0;
-    }
+    // Use continuous mathematical functions instead of discrete ranges
+    // This eliminates the discontinuity at 780nm boundary
     
-    // For infrared (above 781nm), use enhanced red/orange colors
-    if (wavelengthNm >= 781) {
-        if (wavelengthNm < 1000) {
-            red = 1.0;
-            green = 0.2;
+    if (wavelengthNm < 200) {
+        // Extreme UV - brilliant white
+        red = 1.0;
+        green = 1.0;
+        blue = 1.0;
+    } else if (wavelengthNm < 380) {
+        // UV range - transition from white to violet
+        const t = (wavelengthNm - 200) / (380 - 200);
+        // Smooth transition using cosine interpolation
+        const smoothT = 0.5 * (1 - Math.cos(t * Math.PI));
+        red = 1.0 - 0.7 * smoothT;      // 1.0 → 0.3
+        green = 1.0 - 0.8 * smoothT;    // 1.0 → 0.2  
+        blue = 1.0;                     // Constant blue
+    } else if (wavelengthNm <= 780) {
+        // Visible spectrum - use continuous sine/cosine functions
+        // This creates smooth color transitions without discrete boundaries
+        
+        if (wavelengthNm <= 440) {
+            // Violet to blue (380-440nm)
+            const t = (wavelengthNm - 380) / (440 - 380);
+            red = 0.3 * (1 - t);  // Violet component fades
+            green = 0.0;
+            blue = 1.0;
+        } else if (wavelengthNm <= 490) {
+            // Blue to cyan (440-490nm)
+            const t = (wavelengthNm - 440) / (490 - 440);
+            red = 0.0;
+            green = t;              // Green rises
+            blue = 1.0;
+        } else if (wavelengthNm <= 510) {
+            // Cyan to green (490-510nm)
+            const t = (wavelengthNm - 490) / (510 - 490);
+            red = 0.0;
+            green = 1.0;
+            blue = 1.0 - t;         // Blue fades
+        } else if (wavelengthNm <= 580) {
+            // Green to yellow (510-580nm)
+            const t = (wavelengthNm - 510) / (580 - 510);
+            red = t;                // Red rises
+            green = 1.0;
             blue = 0.0;
-        } else if (wavelengthNm < 2000) {
-            red = 0.9;
-            green = 0.1;
+        } else if (wavelengthNm <= 645) {
+            // Yellow to red (580-645nm)
+            const t = (wavelengthNm - 580) / (645 - 580);
+            red = 1.0;
+            green = 1.0 - t;        // Green fades
             blue = 0.0;
         } else {
-            red = 0.8;
+            // Pure red (645-780nm) - completely smooth
+            red = 1.0;
             green = 0.0;
             blue = 0.0;
         }
-    }
-    
-    // For UV (below 380nm), use enhanced violet/blue
-    if (wavelengthNm < 380) {
-        red = 0.6;
+    } else {
+        // Infrared - continuous decay from red
+        // Use exponential decay for smooth transition
+        const irWavelength = wavelengthNm - 780;
+        const decayFactor = Math.exp(-irWavelength / 2000); // Smooth exponential decay
+        red = 1.0 * decayFactor + 0.4 * (1 - decayFactor);  // 1.0 → 0.4 smoothly
         green = 0.0;
-        blue = 1.0;
+        blue = 0.0;
     }
     
-    // Enhanced intensity factor for better visibility
-    let factor = 1.0;
-    if (wavelengthNm >= 380 && wavelengthNm < 420) {
-        factor = 0.6 + 0.4 * (wavelengthNm - 380) / (420 - 380);
-    } else if (wavelengthNm >= 701 && wavelengthNm < 781) {
-        factor = 0.6 + 0.4 * (781 - wavelengthNm) / (781 - 701);
+    // Apply smooth visibility attenuation at spectrum edges
+    let visibilityFactor = 1.0;
+    
+    if (wavelengthNm < 420) {
+        // Smooth UV attenuation
+        const t = Math.max(0, (wavelengthNm - 350) / (420 - 350));
+        visibilityFactor = 0.1 + 0.9 * (0.5 * (1 - Math.cos(t * Math.PI)));
+    } else if (wavelengthNm > 700) {
+        // Smooth infrared attenuation - NO DISCONTINUITY at 780nm
+        const t = Math.min(1, (wavelengthNm - 700) / (900 - 700));
+        visibilityFactor = 1.0 - 0.7 * (0.5 * (1 - Math.cos(t * Math.PI)));
     }
     
-    // Boost overall brightness for thermal radiation visibility
-    const brightnessBost = 1.8;
-    factor *= brightnessBost;
+    // Apply brightness scaling
+    red *= visibilityFactor;
+    green *= visibilityFactor;
+    blue *= visibilityFactor;
     
-    red = Math.min(255, Math.max(0, Math.round(red * factor * 255)));
-    green = Math.min(255, Math.max(0, Math.round(green * factor * 255)));
-    blue = Math.min(255, Math.max(0, Math.round(blue * factor * 255)));
+    // Convert to 0-255 range with proper clamping
+    red = Math.min(255, Math.max(0, Math.round(red * 255)));
+    green = Math.min(255, Math.max(0, Math.round(green * 255)));
+    blue = Math.min(255, Math.max(0, Math.round(blue * 255)));
     
     return { r: red, g: green, b: blue };
 }
@@ -205,8 +236,7 @@ class Photon {
             return false; // Mark for removal
         }
         return true; // Keep photon
-    }
-      checkAbsorption() {
+    }    checkAbsorption() {
         const objectX = getObjectDistancePixels();
         const objectY = (canvasHeight - OBJECT_HEIGHT) / 2;
         
@@ -216,21 +246,28 @@ class Photon {
             
             const material = MATERIAL_PROPERTIES[objectType];
             if (Math.random() < material.absorption) {
-                absorbedEnergy += this.energy;
+                // Apply scaling factor to correct for photon cap limitation
+                const correctedEnergy = this.energy * photonScalingFactor;
+                absorbedEnergy += correctedEnergy;
+                
+                // Track absorption with timestamp for power calculation
+                energyAbsorptionHistory.push({
+                    energy: correctedEnergy,
+                    timestamp: Date.now()
+                });
                 this.absorbed = true;
             }
         }
-    }    render() {
+    }render() {
         if (this.absorbed) return;
         
         // Use wavelength-based color for realistic physics
         const rgb = wavelengthToRGB(this.wavelength);
         const alpha = Math.max(0.3, 1 - this.age / this.maxAge);
-        
-        // Enhanced brightness based on energy, intensity, and temperature
+          // Enhanced brightness based on energy, intensity, and temperature
         const energyFactor = Math.min(this.energy / 100, 1);
         const intensityFactor = intensity / 100;
-        const temperatureFactor = Math.min(temperature / 1000, 1.5); // Higher temps = brighter
+        const temperatureFactor = Math.min(temperature / 1000, 3.0); // Increased to match source rendering
         const brightness = energyFactor * intensityFactor * temperatureFactor;
         
         // Apply brightness with higher minimum visibility for thermal radiation
@@ -272,7 +309,11 @@ class Photon {
 function initializeSimulationState() {
     photons.length = 0;
     absorbedEnergy = 0;
+    absorbedEnergyRate = 0;
+    energyAbsorptionHistory = [];
     totalPhotonsEmitted = 0;
+    theoreticalPhotonsEmitted = 0;
+    photonScalingFactor = 1.0;
     console.log("Thermal radiation simulation initialized.");
 }
 
@@ -293,10 +334,25 @@ function emitPhotons() {
     // Calculate emission rate based on Stefan-Boltzmann law
     // Stefan-Boltzmann law: Power ∝ T^4
     const baseEmissionRate = Math.pow(temperature / 300, 4) * (intensity / 100);
-    const photonsPerFrame = baseEmissionRate * 1.2; // Adjusted for better visualization
+    const theoreticalPhotonsPerFrame = baseEmissionRate * 1.2 * PHOTON_DENSITY_REDUCTION;
+    
+    // Track theoretical total (what should be emitted without performance cap)
+    theoreticalPhotonsEmitted += theoreticalPhotonsPerFrame;
+    
+    // Performance cap: limit actual visual photons
+    if (photons.length >= MAX_PHOTONS) {
+        // Still track theoretical emissions but don't create visual photons
+        return;
+    }
     
     // Emit photons from random points on the source surface
-    const numPhotonsToEmit = Math.floor(photonsPerFrame) + (Math.random() < (photonsPerFrame % 1) ? 1 : 0);
+    const numPhotonsToEmit = Math.min(
+        Math.floor(theoreticalPhotonsPerFrame) + (Math.random() < (theoreticalPhotonsPerFrame % 1) ? 1 : 0),
+        MAX_PHOTONS - photons.length // Don't exceed maximum
+    );
+    
+    // Calculate scaling factor for energy correction
+    photonScalingFactor = theoreticalPhotonsEmitted / Math.max(totalPhotonsEmitted || 1, 1);
     
     for (let i = 0; i < numPhotonsToEmit; i++) {
         // Random point on source surface (uniform distribution in circle)
@@ -310,26 +366,27 @@ function emitPhotons() {
         const emissionAngle = Math.random() * Math.PI * 2;
         const speed = 2.0 + Math.random() * 3.0; // Variable photon speed for realism
         const vx = Math.cos(emissionAngle) * speed;
-        const vy = Math.sin(emissionAngle) * speed;
-          // Generate wavelength using Wien's displacement law and improved Planck distribution
+        const vy = Math.sin(emissionAngle) * speed;          // Generate wavelength using Wien's displacement law with TIGHT distribution
         const peakWavelength = temperatureToWavelength(temperature);
+          // Much tighter wavelength distribution around peak to reduce rainbow effect
+        // Use normal distribution approximation for more coherent colors
+        const narrowSpread = 0.08; // Extremely tight spread factor (8% variation)
         
-        // Better thermal radiation wavelength distribution
-        // Use exponential distribution around peak with temperature-dependent spread
-        const spread = peakWavelength * (0.5 + temperature / 3000); // Wider spread at higher temps
+        // Generate two random numbers for Box-Muller transform (normal distribution)
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
         
-        // Generate wavelength with realistic thermal distribution
-        let wavelength;
-        if (Math.random() < 0.7) {
-            // 70% of photons near the peak (realistic thermal distribution)
-            wavelength = peakWavelength * (0.8 + Math.random() * 0.4);
-        } else {
-            // 30% spread wider (infrared tail)
-            wavelength = peakWavelength * (1.0 + Math.random() * 2.0);
-        }
-        
-        // Ensure wavelength bounds for visible to infrared range
-        const clampedWavelength = Math.max(3e-7, Math.min(wavelength, 1e-5)); // 300nm to 10,000nm (10μm)
+        // Apply tight normal distribution around peak wavelength
+        const wavelengthVariation = z0 * narrowSpread; // ±15% variation typically
+        let wavelength = peakWavelength * (1.0 + wavelengthVariation);
+          // Clamp to very tight bounds to prevent extreme outliers
+        const minBound = peakWavelength * 0.85; // No less than 85% of peak
+        const maxBound = peakWavelength * 1.2; // No more than 120% of peak
+        wavelength = Math.max(minBound, Math.min(maxBound, wavelength));
+          // Ensure wavelength bounds - extend UV range for high temperatures
+        const minWavelength = temperature > 3000 ? 1e-7 : 3e-7; // 100nm for high temps, 300nm for lower
+        const clampedWavelength = Math.max(minWavelength, Math.min(wavelength, 1e-5)); // Extended UV to 10μm IR
         
         // Energy based on wavelength (E = hc/λ)
         const energy = (PLANCK_CONSTANT * SPEED_OF_LIGHT) / clampedWavelength;
@@ -350,22 +407,20 @@ function runSinglePhysicsStep(deltaTime) {
 }
 
 function renderSimulation() {
-    if (!ctx) return;
-    
-    // Clear canvas with dark background
+    if (!ctx) return;    // Clear canvas with dark background
     ctx.fillStyle = '#000011';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
     
-    // Draw radiation source
-    drawRadiationSource();
-    
-    // Draw absorption object
-    drawAbsorptionObject();
-    
-    // Draw photons
+    // Draw photons first (behind all objects and text)
     photons.forEach(photon => photon.render());
     
-    // Draw distance line
+    // Draw radiation source on top of photons
+    drawRadiationSource();
+    
+    // Draw absorption object on top of photons and source
+    drawAbsorptionObject();
+    
+    // Draw distance line on top
     drawDistanceLine();
 }
 
@@ -376,8 +431,8 @@ function drawRadiationSource() {
     const peakWavelength = temperatureToWavelength(temperature);
     const rgb = wavelengthToRGB(peakWavelength);
     
-    // Brightness based on both temperature and intensity
-    const tempFactor = Math.min(temperature / 1000, 1.5);
+    // Improved brightness calculation for high temperatures
+    const tempFactor = Math.min(temperature / 1000, 3.0); // Increased cap for higher temps
     const intensityFactor = intensity / 100;
     const brightness = tempFactor * intensityFactor;
     const minBrightness = 0.2;
@@ -482,19 +537,31 @@ function drawDistanceLine() {
 function computeAndDisplayData() {
     if (!absorbedEnergyDisplay || !emissionRateDisplay) return;
     
-    // Calculate emission rate (photons per second) - more accurate
+    // Calculate theoretical emission rate (what should be emitted without cap)
     const stefanBoltzmannRate = Math.pow(temperature / 300, 4);
-    const emissionRate = stefanBoltzmannRate * (intensity / 100) * 60; // Scaled for display      // Calculate inverse square law effect on intensity
+    const theoreticalEmissionRate = stefanBoltzmannRate * (intensity / 100) * 60; // Scaled for display
+    
+    // Calculate inverse square law effect on intensity
     const distanceM = getActualDistanceMeters();
     const inverseSquareFactor = Math.pow(0.5 / Math.max(distanceM, 0.1), 2); // Using meters for realistic calculation
     const effectiveIntensity = inverseSquareFactor * intensity;
     
-    // Calculate proper absorbed energy rate (energy per second)
-    const absorbedEnergyRate = absorbedEnergy / Math.max(totalPhotonsEmitted / 60, 1); // per second
+    // Calculate more reactive absorbed energy rate (power per unit time)
+    // Clean old entries from history (keep only last 2 seconds)
+    const currentTime = Date.now();
+    const timeWindow = 2000; // 2 seconds
+    energyAbsorptionHistory = energyAbsorptionHistory.filter(entry => 
+        currentTime - entry.timestamp < timeWindow
+    );
     
-    // Update displays with better formatting
+    // Calculate power (energy per second) from recent absorptions (already corrected)
+    const recentEnergySum = energyAbsorptionHistory.reduce((sum, entry) => sum + entry.energy, 0);
+    const timeSpan = timeWindow / 1000; // Convert to seconds
+    absorbedEnergyRate = recentEnergySum / timeSpan; // J/s (Watts)
+    
+    // Update displays with corrected values
     absorbedEnergyDisplay.textContent = absorbedEnergyRate.toFixed(1);
-    emissionRateDisplay.textContent = emissionRate.toFixed(0);
+    emissionRateDisplay.textContent = theoreticalEmissionRate.toFixed(0); // Show theoretical rate
     
     // Add distance and intensity info to existing display elements
     const infoBar = document.querySelector('.sim-info-bar');
@@ -504,9 +571,10 @@ function computeAndDisplayData() {
         distanceInfo.className = 'sim-info-item';
         infoBar.insertBefore(distanceInfo, infoBar.lastElementChild);
     }
-        const distanceInfoElement = document.getElementById('distanceInfo');
+    
+    const distanceInfoElement = document.getElementById('distanceInfo');
     if (distanceInfoElement) {
-        distanceInfoElement.innerHTML = `Distance: ${distanceM.toFixed(2)} m | Intensity: ${effectiveIntensity.toFixed(1)}%`;
+        distanceInfoElement.innerHTML = `Distance: ${distanceM.toFixed(2)} m | Intensity: ${effectiveIntensity.toFixed(1)}% | Scale: ${photonScalingFactor.toFixed(1)}x`;
     }
 }
 

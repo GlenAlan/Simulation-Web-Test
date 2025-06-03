@@ -1,4 +1,4 @@
-// Radiation Simulation Core Logic
+// Thermal Radiation Simulation Core Logic
 // Based on simulation_template_core.js structure
 
 // --- DOM Element References ---
@@ -346,11 +346,11 @@ class Photon {
         const temperatureFactor = Math.min(temperature / 1000, 3.0); // Increased to match source rendering
         const brightness = energyFactor * intensityFactor * temperatureFactor;
         
-        // Apply brightness with higher minimum visibility for radiation
+        // Apply brightness with higher minimum visibility for thermal radiation
         const minBrightness = 0.4; // Increased from 0.1
         const effectiveBrightness = minBrightness + brightness * (1 - minBrightness);
         
-        // Additional brightness boost for radiation visibility
+        // Additional brightness boost for thermal radiation visibility
         const thermalBoost = 1.5;
         const finalBrightness = Math.min(1.0, effectiveBrightness * thermalBoost);
         
@@ -391,7 +391,7 @@ function initializeSimulationState() {
     theoreticalPhotonsEmitted = 0;
     photonScalingFactor = 1.0;
     objectTemperature = ambientTemperature; // Reset object to ambient temperature
-    console.log("Radiation simulation initialized.");
+    console.log("Thermal radiation simulation initialized.");
 }
 
 function adaptSimulationToResize(oldWidth, oldHeight, newWidth, newHeight) {
@@ -884,7 +884,7 @@ function startSimulation() {
     
     initializeSimulationState();
     requestAnimationFrame(animate);
-    console.log("Radiation simulation started.");
+    console.log("Thermal radiation simulation started.");
 }
 
 // --- UI Event Listeners ---

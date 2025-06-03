@@ -43,6 +43,10 @@ let heatRadius = 5,
     cooling    = false, // Added for right-click cooling
     mX = 0, mY = 0;
 
+// MULTI-TOUCH STATE
+let touchPoints = new Map(); // Map to store active touch points
+let activeTouchCount = 0;
+
 // DOM REFS
 const canvas      = document.getElementById('simulationCanvas'); 
 let ctx           = canvas ? canvas.getContext('2d') : null;
@@ -214,6 +218,45 @@ function updatePosition(e) {
   }
 }
 
+// Updated function to handle multiple touch points
+function updateTouchPoints(e) {
+  if (!canvas) return;
+  const r = canvas.getBoundingClientRect();
+  
+  if (e.touches) {
+    // Clear current touch points
+    touchPoints.clear();
+    
+    // Process all active touches
+    for (let i = 0; i < e.touches.length; i++) {
+      const touch = e.touches[i];
+      let x = touch.clientX - r.left;
+      let y = touch.clientY - r.top;
+      
+      if (r.width > 0 && r.height > 0) { 
+        x = x * (canvas.width / r.width);
+        y = y * (canvas.height / r.height);
+      } else {
+        x = 0; y = 0;
+      }
+      
+      touchPoints.set(touch.identifier, {
+        x: x,
+        y: y,
+        heating: true, // Default to heating for touch
+        cooling: false
+      });
+    }
+    
+    activeTouchCount = e.touches.length;
+    
+    // Also update the legacy single point for mouse compatibility
+    if (e.touches.length > 0) {
+      updatePosition(e);
+    }
+  }
+}
+
 if (canvas) {
     canvas.addEventListener('mousedown', (e) => {
         updatePosition(e);
@@ -238,17 +281,35 @@ if (canvas) {
     });
     canvas.addEventListener('mousemove', (e) => {
         if(heating || cooling) updatePosition(e);
-    });
-
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent context menu on right click
-
+    });    canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent context menu on right click    // Enhanced touch event handling for multiple touches
     canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault(); heating = true; updatePosition(e);
+        e.preventDefault(); 
+        heating = true; 
+        updateTouchPoints(e);
+        console.log(`Touch started: ${e.touches.length} touch(es)`);
     }, { passive: false });
-    canvas.addEventListener('touchend', () => heating = false);
-    canvas.addEventListener('touchcancel', () => heating = false);
+      canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        updateTouchPoints(e);
+        console.log(`Touch ended: ${e.touches.length} touch(es) remaining`);
+        if (e.touches.length === 0) {
+            heating = false;
+            touchPoints.clear();
+            activeTouchCount = 0;
+        }
+    }, { passive: false });
+    
+    canvas.addEventListener('touchcancel', (e) => {
+        heating = false;
+        touchPoints.clear();
+        activeTouchCount = 0;
+    });
+    
     canvas.addEventListener('touchmove', (e) => {
-      e.preventDefault(); if (heating) updatePosition(e);
+        e.preventDefault(); 
+        if (heating) {
+            updateTouchPoints(e);
+        }
     }, { passive: false });
 }
 
@@ -409,6 +470,42 @@ function renderDensity() {
 }
 function simulate() {
   u_prev.fill(0); v_prev.fill(0); dens_prev.fill(0);
+  
+  // Handle multi-touch input
+  if (touchPoints.size > 0 && canvas && canvas.width > 0 && canvas.height > 0) {
+    const simCellW = canvas.width / N; 
+    const simCellH = canvas.height / N;
+    
+    if (simCellW > 0 && simCellH > 0) {
+      const heatRadiusSq = heatRadius*heatRadius;
+      const twiceHeatRadiusSq = 2*heatRadiusSq;
+      
+      // Apply heating/cooling for each active touch point
+      touchPoints.forEach((touchPoint) => {
+        const ci = Math.floor(touchPoint.x / simCellW) + 1; 
+        const cj = N - Math.floor(touchPoint.y / simCellH);
+        
+        for (let di = -heatRadius; di <= heatRadius; di++) {
+          for (let dj = -heatRadius; dj <= heatRadius; dj++) {
+            const ii = ci + di, jj = cj + dj;
+            if (ii>=1 && ii<=N && jj>=1 && jj<=N) {
+              const d2 = di*di + dj*dj;
+              if (d2 <= heatRadiusSq) {
+                const w = Math.exp(-d2/twiceHeatRadiusSq);
+                if (touchPoint.heating) {
+                    dens_prev[IX(ii,jj)] += heatAmpMult * heatAmp * w;
+                } else if (touchPoint.cooling) {
+                    dens_prev[IX(ii,jj)] -= heatAmpMult * heatAmp * w;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+  
+  // Handle legacy mouse input (for backward compatibility)
   if ((heating || cooling) && canvas && canvas.width > 0 && canvas.height > 0) { 
     const simCellW = canvas.width / N; 
     const simCellH = canvas.height / N;
@@ -581,9 +678,12 @@ function reinitializeArrays(newN) {
         offscreenCanvas.width = N;
         offscreenCanvas.height = N;
         if (offscreenCtx) offscreenImageData = offscreenCtx.createImageData(N, N);
-    }
-    // Potentially reset mouse interaction states if they depend on cell size
+    }    // Potentially reset mouse interaction states if they depend on cell size
     mX = 0; mY = 0;
+    
+    // Reset multi-touch state
+    touchPoints.clear();
+    activeTouchCount = 0;
 }
 
 // Expose setSize to be called from simulation_ui.js
@@ -626,6 +726,10 @@ function resetSimulation() {
     heating = false;
     cooling = false;
     accumulatedTime = 0;
+    
+    // Reset multi-touch state
+    touchPoints.clear();
+    activeTouchCount = 0;
     // lastTimestamp = 0; // Resetting lastTimestamp can cause a jump if animation loop is running, usually not reset here
 
     // Update UI elements if they exist

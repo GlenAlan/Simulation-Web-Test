@@ -264,28 +264,76 @@ function computeEnergy() {
 }
 
 // UI Interaction State (ensure mX, mY are initialized if not already)
-let heating = false, mX = 0, mY = 0;
+let heating = false, cooling = false, mX = 0, mY = 0;
 
 // Event Listeners for UI
 if (canvas) {
+    // Left-click for heating
     canvas.addEventListener('mousedown', (e) => {
-        heating = true;
+        if (e.button === 0) { // Left mouse button
+            heating = true;
+            cooling = false;
+            updateMousePosition(e);
+        }
+    });
+    canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 0) { // Left mouse button
+            heating = false;
+        }
+    });
+    
+    // Right-click for cooling
+    canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); // Prevent context menu from appearing
+        cooling = true;
+        heating = false;
         updateMousePosition(e);
+        return false;
     });
-    canvas.addEventListener('mouseup', () => heating = false);
-    canvas.addEventListener('mouseleave', () => heating = false);
+    
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { // Right mouse button
+            cooling = true;
+            heating = false;
+            updateMousePosition(e);
+        }
+    });
+    
+    canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 2) { // Right mouse button
+            cooling = false;
+        }
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+        heating = false;
+        cooling = false;
+    });
+    
     canvas.addEventListener('mousemove', (e) => {
-        if (heating) updateMousePosition(e);
+        if (heating || cooling) updateMousePosition(e);
     });
+    
+    // Touch events for mobile
     canvas.addEventListener('touchstart', (e) => {
-        heating = true;
+        heating = true; // Default to heating for touch events
+        cooling = false;
         updateMousePosition(e);
         e.preventDefault(); // Prevent scrolling/default touch actions
     }, { passive: false });
-    canvas.addEventListener('touchend', () => heating = false);
-    canvas.addEventListener('touchcancel', () => heating = false);
+    
+    canvas.addEventListener('touchend', () => {
+        heating = false;
+        cooling = false;
+    });
+    
+    canvas.addEventListener('touchcancel', () => {
+        heating = false;
+        cooling = false;
+    });
+    
     canvas.addEventListener('touchmove', (e) => {
-        if (heating) {
+        if (heating || cooling) {
             updateMousePosition(e);
             e.preventDefault();
         }
@@ -425,9 +473,7 @@ function animate(timestamp) {
     // Cap delta time to prevent physics spiral if tab was inactive for a long time
     if (realDeltaTimeMs > 100) { 
         realDeltaTimeMs = 100;
-    }
-
-    // Apply heating (once per animation frame, as in original conduction.html)
+    }    // Apply heating or cooling (once per animation frame)
     if (heating) {
         particles.forEach(p => {
             const dx = p.x - mX, dy = p.y - mY;
@@ -436,6 +482,16 @@ function animate(timestamp) {
             const dv = heatAmp * weight; 
             p.vx += (Math.random() * 2 - 1) * dv;
             p.vy += (Math.random() * 2 - 1) * dv;
+        });
+    } else if (cooling) {
+        particles.forEach(p => {
+            const dx = p.x - mX, dy = p.y - mY;
+            const weight = Math.exp(-(dx * dx + dy * dy) / (2 * heatRadius * heatRadius));
+            
+            // Cooling effect - reduce velocity proportionally to the current velocity and weight
+            const dampingFactor = Math.min(0.2, heatAmp * weight * 0.2); // Scale cooling effect
+            p.vx *= (1 - dampingFactor);
+            p.vy *= (1 - dampingFactor);
         });
     }
 
